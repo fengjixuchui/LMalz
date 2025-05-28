@@ -21,20 +21,20 @@
 
 #pragma warning(disable:4201)
 
-typedef union VIRTUAL_ADDRESS_
-{
-	UINT64 value;
-	void* pointer;
-	struct
-	{
-		UINT64 offset : 12;
-		UINT64 pt_index : 9;
-		UINT64 pd_index : 9;
-		UINT64 pdpt_index : 9;
-		UINT64 pml4_index : 9;
-		UINT64 reserved : 16;
-	};
-} OR_ADDRESS;
+//typedef union VIRTUAL_ADDRESS_
+//{
+//	UINT64 value;
+//	void* pointer;
+//	struct
+//	{
+//		UINT64 offset : 12;
+//		UINT64 pt_index : 9;
+//		UINT64 pd_index : 9;
+//		UINT64 pdpt_index : 9;
+//		UINT64 pml4_index : 9;
+//		UINT64 reserved : 16;
+//	};
+//} OR_ADDRESS;
 #define GT(a) decltype(a)
 
 #define _2u64(a) ((UINT64)a)

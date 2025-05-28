@@ -1,15 +1,9 @@
 #include "orhv.h"
-#include "vmx\vmx.inl"
-#include "vmx\vmx.h"
+//#include "vmx\vmx.inl"
+//#include "vmx\vmx.h"
 #include "handler_class.h"
 #include "idt.h"
-struct OR_EXCEPTION_INFO
-{
-	bool monitor;  //是否正在监听
-	bool find;	   //是否发现异常
-	UINT64 vector;	//异常向量
-	UINT64 errorCode; //异常代码
-};
+
 
 static OR_EXCEPTION_INFO* g_idt_infos = 0;
 
@@ -17,29 +11,29 @@ static OR_EXCEPTION_INFO* g_idt_infos = 0;
 typedef HANDLER_CLS<IDT_HANDLER_T> IDT_HANDLERS;
 IDT_HANDLERS* idt_handlers;
 
-extern "C" void ALvmxIDT_interrupt_handler_00_DE_asm();
-extern "C" void ALvmxIDT_interrupt_handler_01_DB_asm();
-extern "C" void ALvmxIDT_interrupt_handler_02_NMI_asm();
-extern "C" void ALvmxIDT_interrupt_handler_03_BP_asm();
-extern "C" void ALvmxIDT_interrupt_handler_04_OF_asm();
-extern "C" void ALvmxIDT_interrupt_handler_05_BR_asm();
-extern "C" void ALvmxIDT_interrupt_handler_06_UD_asm();
-extern "C" void ALvmxIDT_interrupt_handler_07_NM_asm();
-extern "C" void ALvmxIDT_interrupt_handler_08_DF_asm();
+extern "C" void ALhvIDT_interrupt_handler_00_DE_asm();
+extern "C" void ALhvIDT_interrupt_handler_01_DB_asm();
+extern "C" void ALhvIDT_interrupt_handler_02_NMI_asm();
+extern "C" void ALhvIDT_interrupt_handler_03_BP_asm();
+extern "C" void ALhvIDT_interrupt_handler_04_OF_asm();
+extern "C" void ALhvIDT_interrupt_handler_05_BR_asm();
+extern "C" void ALhvIDT_interrupt_handler_06_UD_asm();
+extern "C" void ALhvIDT_interrupt_handler_07_NM_asm();
+extern "C" void ALhvIDT_interrupt_handler_08_DF_asm();
 
-extern "C" void ALvmxIDT_interrupt_handler_10_TS_asm();
-extern "C" void ALvmxIDT_interrupt_handler_11_NP_asm();
-extern "C" void ALvmxIDT_interrupt_handler_12_SS_asm();
-extern "C" void ALvmxIDT_interrupt_handler_13_GP_asm();
-extern "C" void ALvmxIDT_interrupt_handler_14_PF_asm();
+extern "C" void ALhvIDT_interrupt_handler_10_TS_asm();
+extern "C" void ALhvIDT_interrupt_handler_11_NP_asm();
+extern "C" void ALhvIDT_interrupt_handler_12_SS_asm();
+extern "C" void ALhvIDT_interrupt_handler_13_GP_asm();
+extern "C" void ALhvIDT_interrupt_handler_14_PF_asm();
 
-extern "C" void ALvmxIDT_interrupt_handler_16_MF_asm();
-extern "C" void ALvmxIDT_interrupt_handler_17_AC_asm();
-extern "C" void ALvmxIDT_interrupt_handler_18_MC_asm();
-extern "C" void ALvmxIDT_interrupt_handler_19_XF_asm();
-extern "C" void ALvmxIDT_interrupt_handler_20_VE_asm();
+extern "C" void ALhvIDT_interrupt_handler_16_MF_asm();
+extern "C" void ALhvIDT_interrupt_handler_17_AC_asm();
+extern "C" void ALhvIDT_interrupt_handler_18_MC_asm();
+extern "C" void ALhvIDT_interrupt_handler_19_XF_asm();
+extern "C" void ALhvIDT_interrupt_handler_20_VE_asm();
 
-extern "C" void ALvmxIDT_interrupt_handler_21_CP_asm();
+extern "C" void ALhvIDT_interrupt_handler_21_CP_asm();
 typedef struct
 {
 	uint16_t offset_low;
@@ -137,7 +131,7 @@ bool ALhvIDTsafeCopy(PVOID desAdd, PVOID souAdd, UINT64 size)
 		ALhvIDTwriteMemory64_asm(&((PUINT64)desAdd)[i], &((PUINT64)souAdd)[i]);
 		if (info->find)
 		{
-			info->monitor = 1;
+			info->monitor = 0;
 			return 0;
 		}
 	}
@@ -147,7 +141,7 @@ bool ALhvIDTsafeCopy(PVOID desAdd, PVOID souAdd, UINT64 size)
 		ALhvIDTwriteMemory32_asm(&((PUINT32)desAdd)[a / 4], &((PUINT32)souAdd)[a / 4]);
 		if (info->find)
 		{
-			info->monitor = 1;
+			info->monitor = 0;
 			return 0;
 		}
 	}
@@ -156,7 +150,7 @@ bool ALhvIDTsafeCopy(PVOID desAdd, PVOID souAdd, UINT64 size)
 		ALhvIDTwriteMemory8_asm(&((PUINT8)desAdd)[j], &((PUINT8)souAdd)[j]);
 		if (info->find)
 		{
-			info->monitor = 1;
+			info->monitor = 0;
 			return 0;
 		}
 	}
@@ -191,6 +185,68 @@ inline UINT64 ALhvIDTgetCode()
 }
 
 
+extern "C" void ALhvIDTxsetbv_asm(uint32_t idx, uint64_t value);
+
+const OR_EXCEPTION_INFO* ALhvIDTsafeXsetbv(uint32_t idx, uint64_t value)
+{
+	auto info = get_curr_info();
+	info->monitor = 1;
+	info->find = 0;
+	ALhvIDTxsetbv_asm(idx, value);
+	info->monitor = 0;
+	return info;
+}
+//template <typename T, typename... Args>
+//static auto call_asm(T fun, Args... args)
+//{
+//	auto info = get_curr_info();
+//	info->monitor = 1;
+//	info->find = 0;
+//	auto r = fun(args...);
+//	info->monitor = 0;
+//	return r;
+//}		  
+//template <typename T, typename... Args>
+//static void call_asm(T fun, Args... args)
+//{
+//	auto info = get_curr_info();
+//	info->monitor = 1;
+//	info->find = 0;
+//	fun(args...);
+//	info->monitor = 0;
+//	return;
+//}
+//bool ALhvIDTsafeXsetbv(uint32_t idx, uint64_t value)
+//{
+//	call_asm(ALhvIDTxsetbv_asm, idx, value);
+//	return !ALhvIDTexception();
+//}
+
+extern "C" uint64_t ALhvIDTrdmsr_asm(uint32_t msr);
+extern "C" void ALhvIDTwrmsr_asm(uint32_t msr, UINT64 v);
+
+
+
+const OR_EXCEPTION_INFO* ALhvIDTsafeRdmsr(__in uint32_t msr, __out UINT64* value)
+{
+	auto info = get_curr_info();
+	info->monitor = 1;
+	info->find = 0;
+	auto v = ALhvIDTrdmsr_asm(msr);
+	*value = v;
+	info->monitor = 0;
+	return info;
+}			   
+const OR_EXCEPTION_INFO* ALhvIDTsafeWrmsr(__in uint32_t msr, __in UINT64 value)
+{
+	auto info = get_curr_info();
+	info->monitor = 1;
+	info->find = 0;
+	ALhvIDTwrmsr_asm(msr, value);
+	info->monitor = 0;
+	return info;
+}
+
 
 
 static bool safe_handler(trap_frame* frame)
@@ -201,8 +257,8 @@ static bool safe_handler(trap_frame* frame)
 	else
 	{
 		info->find = 1;
-		info->vector = frame->vector;
-		info->errorCode = frame->error;
+		info->vector = (UINT32)frame->vector;
+		info->errorCode = (UINT32)frame->error;
 
 		frame->rip = *((PUINT64)frame->rsp);
 		frame->rsp += 8;
@@ -210,7 +266,7 @@ static bool safe_handler(trap_frame* frame)
 		return 1;
 	}
 }
-segment_descriptor_interrupt_gate_64* ALvmx_prepare_host_idt()
+segment_descriptor_interrupt_gate_64* ALhvIDT_prepare_host_idt()
 {
 	static IDT_HANDLERS s_idt_handlers;
 	idt_handlers = &s_idt_handlers;
@@ -227,29 +283,29 @@ segment_descriptor_interrupt_gate_64* ALvmx_prepare_host_idt()
 	{
 		memcpy(ret, (PVOID)idtr.base_address, 0x1000);
 
-		ALvmSetIdteFunAdd(&((IDTE*)ret)[0], (UINT64)&ALvmxIDT_interrupt_handler_00_DE_asm);
-		ALvmSetIdteFunAdd(&((IDTE*)ret)[1], (UINT64)&ALvmxIDT_interrupt_handler_01_DB_asm);
-		ALvmSetIdteFunAdd(&((IDTE*)ret)[2], (UINT64)&ALvmxIDT_interrupt_handler_02_NMI_asm);
-		ALvmSetIdteFunAdd(&((IDTE*)ret)[3], (UINT64)&ALvmxIDT_interrupt_handler_03_BP_asm);
-		ALvmSetIdteFunAdd(&((IDTE*)ret)[4], (UINT64)&ALvmxIDT_interrupt_handler_04_OF_asm);
-		ALvmSetIdteFunAdd(&((IDTE*)ret)[5], (UINT64)&ALvmxIDT_interrupt_handler_05_BR_asm);
-		ALvmSetIdteFunAdd(&((IDTE*)ret)[6], (UINT64)&ALvmxIDT_interrupt_handler_06_UD_asm);
-		ALvmSetIdteFunAdd(&((IDTE*)ret)[7], (UINT64)&ALvmxIDT_interrupt_handler_07_NM_asm);
-		ALvmSetIdteFunAdd(&((IDTE*)ret)[8], (UINT64)&ALvmxIDT_interrupt_handler_08_DF_asm);
+		ALvmSetIdteFunAdd(&((IDTE*)ret)[0], (UINT64)&ALhvIDT_interrupt_handler_00_DE_asm);
+		ALvmSetIdteFunAdd(&((IDTE*)ret)[1], (UINT64)&ALhvIDT_interrupt_handler_01_DB_asm);
+		ALvmSetIdteFunAdd(&((IDTE*)ret)[2], (UINT64)&ALhvIDT_interrupt_handler_02_NMI_asm);
+		ALvmSetIdteFunAdd(&((IDTE*)ret)[3], (UINT64)&ALhvIDT_interrupt_handler_03_BP_asm);
+		ALvmSetIdteFunAdd(&((IDTE*)ret)[4], (UINT64)&ALhvIDT_interrupt_handler_04_OF_asm);
+		ALvmSetIdteFunAdd(&((IDTE*)ret)[5], (UINT64)&ALhvIDT_interrupt_handler_05_BR_asm);
+		ALvmSetIdteFunAdd(&((IDTE*)ret)[6], (UINT64)&ALhvIDT_interrupt_handler_06_UD_asm);
+		ALvmSetIdteFunAdd(&((IDTE*)ret)[7], (UINT64)&ALhvIDT_interrupt_handler_07_NM_asm);
+		ALvmSetIdteFunAdd(&((IDTE*)ret)[8], (UINT64)&ALhvIDT_interrupt_handler_08_DF_asm);
 
-		ALvmSetIdteFunAdd(&((IDTE*)ret)[10], (UINT64)&ALvmxIDT_interrupt_handler_10_TS_asm);
-		ALvmSetIdteFunAdd(&((IDTE*)ret)[11], (UINT64)&ALvmxIDT_interrupt_handler_11_NP_asm);
-		ALvmSetIdteFunAdd(&((IDTE*)ret)[12], (UINT64)&ALvmxIDT_interrupt_handler_12_SS_asm);
-		ALvmSetIdteFunAdd(&((IDTE*)ret)[13], (UINT64)&ALvmxIDT_interrupt_handler_13_GP_asm);
-		ALvmSetIdteFunAdd(&((IDTE*)ret)[14], (UINT64)&ALvmxIDT_interrupt_handler_14_PF_asm);
+		ALvmSetIdteFunAdd(&((IDTE*)ret)[10], (UINT64)&ALhvIDT_interrupt_handler_10_TS_asm);
+		ALvmSetIdteFunAdd(&((IDTE*)ret)[11], (UINT64)&ALhvIDT_interrupt_handler_11_NP_asm);
+		ALvmSetIdteFunAdd(&((IDTE*)ret)[12], (UINT64)&ALhvIDT_interrupt_handler_12_SS_asm);
+		ALvmSetIdteFunAdd(&((IDTE*)ret)[13], (UINT64)&ALhvIDT_interrupt_handler_13_GP_asm);
+		ALvmSetIdteFunAdd(&((IDTE*)ret)[14], (UINT64)&ALhvIDT_interrupt_handler_14_PF_asm);
 
-		ALvmSetIdteFunAdd(&((IDTE*)ret)[16], (UINT64)&ALvmxIDT_interrupt_handler_16_MF_asm);
-		ALvmSetIdteFunAdd(&((IDTE*)ret)[17], (UINT64)&ALvmxIDT_interrupt_handler_17_AC_asm);
-		ALvmSetIdteFunAdd(&((IDTE*)ret)[18], (UINT64)&ALvmxIDT_interrupt_handler_18_MC_asm);
-		ALvmSetIdteFunAdd(&((IDTE*)ret)[19], (UINT64)&ALvmxIDT_interrupt_handler_19_XF_asm);
-		ALvmSetIdteFunAdd(&((IDTE*)ret)[20], (UINT64)&ALvmxIDT_interrupt_handler_20_VE_asm);
+		ALvmSetIdteFunAdd(&((IDTE*)ret)[16], (UINT64)&ALhvIDT_interrupt_handler_16_MF_asm);
+		ALvmSetIdteFunAdd(&((IDTE*)ret)[17], (UINT64)&ALhvIDT_interrupt_handler_17_AC_asm);
+		ALvmSetIdteFunAdd(&((IDTE*)ret)[18], (UINT64)&ALhvIDT_interrupt_handler_18_MC_asm);
+		ALvmSetIdteFunAdd(&((IDTE*)ret)[19], (UINT64)&ALhvIDT_interrupt_handler_19_XF_asm);
+		ALvmSetIdteFunAdd(&((IDTE*)ret)[20], (UINT64)&ALhvIDT_interrupt_handler_20_VE_asm);
 
-		ALvmSetIdteFunAdd(&((IDTE*)ret)[21], (UINT64)&ALvmxIDT_interrupt_handler_21_CP_asm);
+		ALvmSetIdteFunAdd(&((IDTE*)ret)[21], (UINT64)&ALhvIDT_interrupt_handler_21_CP_asm);
 
 
 		return (segment_descriptor_interrupt_gate_64*)ret;
@@ -273,9 +329,9 @@ segment_descriptor_interrupt_gate_64* ALvmx_prepare_host_idt()
 //		ALdbgKill("获取system idt 失败", 0);
 //}
 
-extern "C" UINT64 ALvmIdtHandler(trap_frame * frame)
+extern "C" UINT64 ALhvIdtHandler(trap_frame * frame)
 {
-	auto h_r = idt_handlers->call_handlers();
+	auto h_r = idt_handlers->call_handlers(frame);
 	if (h_r)
 		return 0;
 	else
@@ -287,9 +343,9 @@ extern "C" UINT64 ALvmIdtHandler(trap_frame * frame)
 	}*/
 }
 
-bool ALhvIdtAddHandler(IDT_HANDLER_T handler)
+bool ALhvIdtAddHandler(IDT_HANDLER_T handler, bool toend)
 {
-	return idt_handlers->add_handler(handler);
+	return idt_handlers->add_handler(handler, toend);
 }	 
 bool ALhvIdtDelHandler(IDT_HANDLER_T handler)
 {

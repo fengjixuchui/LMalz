@@ -46,16 +46,18 @@ static bool MapAPICidToCoreIndex();
 template<typename VCPU>
 bool ALhvInitialization(VCPU* vcpu)
 {
-	if (!MapAPICidToCoreIndex())
 	{
-		ALhvAddErr("核心号映射失败");
-		return 0;
-	}
-	auto ret = ALhvMMinitPool();
-	if (!ret)
-	{
-		ALhvAddErr("初始化内存池失败");
-		return 0;
+		if (!MapAPICidToCoreIndex())
+		{
+			ALhvAddErr("核心号映射失败");
+			return 0;
+		}
+		auto ret = ALhvMMinitPool();
+		if (!ret)
+		{
+			ALhvAddErr("初始化内存池失败");
+			return 0;
+		}
 	}
 	//申请核心对象数组
 	{
@@ -100,6 +102,27 @@ bool ALhvInitialization(VCPU* vcpu)
 		}
 		vcpu->host_cr3 = host_cr3;
 	}
+	//获取host_idt
+	{
+		auto host_idt = ALhvIDT_prepare_host_idt();
+		if (!host_idt)
+		{
+			ALhvAddErr("制作hostidt失败");
+			return 0;
+		}
+		vcpu->host_idt = host_idt;
+	}
+	//获取HOST_gdt
+	{
+		auto host_gdt = ALhvGDTgetHostGDT();
+		if (!host_gdt)
+		{
+			ALhvAddErr("制作hostidt失败");
+			return 0;
+		}
+		vcpu->host_gdt = host_gdt;
+	}
+
 	return 1;
 }
 
@@ -137,6 +160,7 @@ bool ALhvStart()
 	{
 		ALhvSetErr("未知CPU类型");
 	}
+	return 1;
 }
 
 
@@ -166,9 +190,12 @@ static bool MapAPICidToCoreIndex()
 	auto core_count = ALhvGetCoreCount();
 	PROCESSOR_NUMBER processorNumber = { 0 };
 	GROUP_AFFINITY   affinity = { 0 }, oldAffinity = { 0 };
-	UINT64 success = 0;
-
-	for (ULONG i = 0; i < core_count; i++)
+	if (core_count > (1LL << ((sizeof(GT(*apid_to_coreIndex)) * 8) - 1)))
+	{
+		ALhvSetErr("核心数量过多,请重新设置映射图颗粒尺寸", core_count);
+		return 0;
+	}
+	for (UINT32 i = 0; i < (UINT32)core_count; i++)
 	{
 		//切换处理器核心
 		auto status = KeGetProcessorNumberFromIndex(i, &processorNumber);
@@ -187,7 +214,7 @@ static bool MapAPICidToCoreIndex()
 			ALhvSetErr("APIC_id过大%d %d", i, apic_id);
 			return 0;
 		}
-		apid_to_coreIndex[apic_id] = i;
+		apid_to_coreIndex[apic_id] = (UINT8)i;
 		//换回原核心
 		KeRevertToUserGroupAffinityThread(&oldAffinity);
 
@@ -200,4 +227,31 @@ int ALhvGetCurrVcoreIndex()
 {
 	return apid_to_coreIndex[ALhvGetAPIC_id()];
 }
+// calculate a segment's base address
+uint64_t ALhvGetSegmentBase(
+	segment_descriptor_register_64 const& gdtr,
+	segment_selector const selector) {
+	// null selector
+	if (selector.index == 0)
+		return 0;
+
+	// fetch the segment descriptor from the gdtr
+	auto const descriptor = reinterpret_cast<segment_descriptor_64*>(
+		gdtr.base_address + static_cast<uint64_t>(selector.index) * 8);
+
+	// 3.3.4.5
+	// calculate the segment base address
+	auto base_address =
+		(uint64_t)descriptor->base_address_low |
+		((uint64_t)descriptor->base_address_middle << 16) |
+		((uint64_t)descriptor->base_address_high << 24);
+
+	// 3.3.5.2
+	// system descriptors are expanded to 16 bytes for ia-32e
+	if (descriptor->descriptor_type == SEGMENT_DESCRIPTOR_TYPE_SYSTEM)
+		base_address |= (uint64_t)descriptor->base_address_upper << 32;
+
+	return base_address;
+}
+
 

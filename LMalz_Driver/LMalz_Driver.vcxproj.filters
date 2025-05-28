@@ -63,6 +63,12 @@
     <ClCompile Include="src\orhv\vmx\ept.cpp">
       <Filter>Source Files\orhv\vmx</Filter>
     </ClCompile>
+    <ClCompile Include="src\orhv\gdt.cpp">
+      <Filter>Source Files\orhv</Filter>
+    </ClCompile>
+    <ClCompile Include="src\orhv\vmx\vmx_exitHandler.cpp">
+      <Filter>Source Files\orhv\vmx</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\orhv\orhv.h">
@@ -104,6 +110,9 @@
     <ClInclude Include="src\orhv\idt.h">
       <Filter>Source Files\orhv</Filter>
     </ClInclude>
+    <ClInclude Include="src\orhv\vmx\vmx_exitHandler.h">
+      <Filter>Source Files\orhv\vmx</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <MASM Include="src\orhv\idt_.asm">
@@ -112,9 +121,15 @@
     <MASM Include="src\orhv\vmx\vmxasm.asm">
       <Filter>Source Files\orhv\vmx</Filter>
     </MASM>
+    <MASM Include="src\orhv\hvasm.asm">
+      <Filter>Source Files\orhv</Filter>
+    </MASM>
   </ItemGroup>
   <ItemGroup>
     <None Include="src\orhv\vmx\vmx.inl">
+      <Filter>Source Files\orhv\vmx</Filter>
+    </None>
+    <None Include="src\orhv\vmx\vmx.inc">
       <Filter>Source Files\orhv\vmx</Filter>
     </None>
   </ItemGroup>

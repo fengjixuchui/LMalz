@@ -1,11 +1,134 @@
-#include <intrin.h>
-#include <wdm.h>
 #include "../orhv.h"
 #include "vmx.h"
 #include "ept.h"
 #include "vmx.inl"
 OR_HV_VMX* gALvmxVCPU = 0;
+char* ALvmxGetVmcsError()
+{
+	size_t out = 0;
+	char* errorString = 0;
+	auto ret = __vmx_vmread(VMCS_VM_INSTRUCTION_ERROR, &out);
+	if (ret)
+	{
+		if (ret == 1)
+		{
+			//ALvmPut("get vmcs error fail :%s", ALvmxGetVmcsError());
+			errorString = "get vmcs error fail";
+			return 0;
+		}
+		else
+		{
+			errorString = ("get vmcs error fail:unknown error");
+			return 0;
+		}
+	}
+	switch (out) {
+	case 1:
+		errorString = ("VMCALL executed in VMX root operation");
+		break;
+	case 2:
+		errorString = ("VMCLEAR with invalid physical address");
+		break;
+	case 3:
+		errorString = ("VMCLEAR with VMXON pointer");
+		break;
+	case 4:
+		errorString = ("VMLAUNCH with non-clear VMCS");
+		break;
+	case 5:
+		errorString = ("VMRESUME with non-launched VMCS");
+		break;
+	case 6:
+		errorString = ("VMRESUME after VMXOFF (VMXOFF and VMXON between VMLAUNCH and VMRESUME)");
+		break;
+	case 7:
+		errorString = ("VM entry with invalid control field(s)");
+		break;
+	case 8:
+		errorString = ("VM entry with invalid host-state field(s)");
+		break;
+	case 9:
+		errorString = ("VMPTRLD with invalid physical address");
+		break;
+	case 10:
+		errorString = ("VMPTRLD with VMXON pointer");
+		break;
+	case 11:
+		errorString = ("VMPTRLD with incorrect VMCS revision identifier");
+		break;
+	case 12:
+		errorString = ("VMREAD/VMWRITE from/to unsupported VMCS component");
+		break;
+	case 13:
+		errorString = ("VMWRITE to read-only VMCS component");
+		break;
+	case 15:
+		errorString = ("VMXON executed in VMX root operation");
+		break;
+	case 16:
+		errorString = ("VM entry with invalid executive-VMCS pointer2");
+		break;
+	case 17:
+		errorString = ("VM entry with non-launched executive VMCS2");
+		break;
+	case 18:
+		errorString = ("VM entry with executive-VMCS pointer not VMXON pointer (when attempting to deactivate the dual-monitor treatment of SMIs and SMM)");
+		break;
+	case 19:
+		errorString = ("VMCALL with non-clear VMCS (when attempting to activate the dual-monitor treatment of SMIs and SMM)");
+		break;
+	case 20:
+		errorString = ("VMCALL with invalid VM-exit control fields");
+		break;
+	case 22:
+		errorString = ("VMCALL with incorrect MSEG revision identifier (when attempting to activate the dual-monitor treatment of SMIs and SMM)");
+		break;
+	case 23:
+		errorString = ("VMXOFF under dual-monitor treatment of SMIs and SMM");
+		break;
+	case 24:
+		errorString = ("VMCALL with invalid SMM-monitor features (when attempting to activate the dual-monitor treatment of SMIs and SMM)");
+		break;
+	case 25:
+		errorString = ("VM entry with invalid VM-execution control fields in executive VMCS (when attempting to return from SMM)");
+		break;
+	case 26:
+		errorString = ("VM entry with events blocked by MOV SS.");
+		break;
+	case 28:
+		errorString = ("Invalid operand to INVEPT/INVVPID.");
+		break;
+	default:
+		errorString = ("Unknown error.");
+		break;
+	}
+	return errorString;
+}
+UINT64 gALvmxHostStackSize = VMX_HOST_STACK_SIZE;
+// calculate a segment's access rights
+vmx_segment_access_rights ALhvGetVMX_segment(
+	segment_descriptor_register_64 const& gdtr,
+	segment_selector const selector) {
+	// fetch the segment descriptor from the gdtr
+	auto const descriptor = reinterpret_cast<segment_descriptor_64*>(
+		gdtr.base_address + static_cast<uint64_t>(selector.index) * 8);
 
+	vmx_segment_access_rights access;
+	access.flags = 0;
+
+	// 3.24.4.1
+	access.type = descriptor->type;
+	access.descriptor_type = descriptor->descriptor_type;
+	access.descriptor_privilege_level = descriptor->descriptor_privilege_level;
+	access.present = descriptor->present;
+	access.available_bit = descriptor->system;
+	access.long_mode = descriptor->long_mode;
+	access.default_big = descriptor->default_big;
+	access.granularity = descriptor->granularity;
+	access.unusable = (selector.index == 0);
+
+	return access;
+}
 static bool ALvmxSupported() {
 	cpuid_eax_01 cpuid_01;
 	__cpuid(reinterpret_cast<int*>(&cpuid_01), 0x01);
@@ -52,6 +175,7 @@ static bool ALvmxSupported() {
 
 	return true;
 }
+
 bool ALvmxCoreStart(OR_HV_VMX_CORE* core)
 {
 	if (!ALvmxSupported())
@@ -285,7 +409,129 @@ bool ALvmxCoreStart(OR_HV_VMX_CORE* core)
 		__vmx_vmwrite(VMCS_CTRL_VMENTRY_MSR_LOAD_COUNT, 3);
 		__vmx_vmwrite(VMCS_CTRL_VMENTRY_MSR_LOAD_ADDRESS, pa);
 	}
+	segment_descriptor_register_64 gdtr, idtr;
+	_sgdt(&gdtr);
+	__sidt(&idtr);
 
+	 //host上下文
+	{
+		vmx_vmwrite(VMCS_HOST_CR3, gALvmxVCPU->host_cr3.flags);
+
+
+		vmx_vmwrite(VMCS_HOST_CR0, ctx.cr0);
+		cr4 host_cr4;
+		host_cr4.flags = __readcr4();
+		host_cr4.fsgsbase_enable = 1;
+		host_cr4.os_xsave = 1;
+		host_cr4.smap_enable = 0;
+		host_cr4.smep_enable = 0;
+		vmx_vmwrite(VMCS_HOST_CR4, host_cr4.flags);
+
+		vmx_vmwrite(VMCS_HOST_RSP, (UINT64)core);//直接将VCPU核心对象作为堆栈传入HOST,方便保存寄存器
+		vmx_vmwrite(VMCS_HOST_RIP, (UINT64)(ALvmxHostEnter_asm));	//vmxasm.asm
+
+		//沿用guest GDT
+		vmx_vmwrite(VMCS_HOST_CS_SELECTOR, ctx.cs.flags & 0xFFF8);  
+		vmx_vmwrite(VMCS_HOST_SS_SELECTOR, ctx.ds.flags & 0xFFF8);
+		vmx_vmwrite(VMCS_HOST_DS_SELECTOR, ctx.es.flags & 0xFFF8);
+		vmx_vmwrite(VMCS_HOST_ES_SELECTOR, ctx.fs.flags & 0xFFF8);
+		vmx_vmwrite(VMCS_HOST_FS_SELECTOR, ctx.gs.flags & 0xFFF8);
+		vmx_vmwrite(VMCS_HOST_GS_SELECTOR, ctx.ss.flags & 0xFFF8);
+		vmx_vmwrite(VMCS_HOST_TR_SELECTOR, ctx.tr.flags & 0xFFF8);
+
+		vmx_vmwrite(VMCS_HOST_FS_BASE, __readmsr(IA32_FS_BASE));
+		vmx_vmwrite(VMCS_HOST_GS_BASE, __readmsr(IA32_GS_BASE));
+		vmx_vmwrite(VMCS_HOST_TR_BASE, ALhvGetSegmentBase(gdtr, ctx.tr));
+		vmx_vmwrite(VMCS_HOST_IDTR_BASE, core->host_idt->flags);
+		vmx_vmwrite(VMCS_HOST_GDTR_BASE, core->host_gdt->flags);
+
+
+		vmx_vmwrite(VMCS_HOST_SYSENTER_CS, __readmsr(IA32_SYSENTER_CS));
+		vmx_vmwrite(VMCS_HOST_SYSENTER_ESP, __readmsr(IA32_SYSENTER_ESP));
+		vmx_vmwrite(VMCS_HOST_SYSENTER_EIP, __readmsr(IA32_SYSENTER_EIP));
+	}
+	//guest 上下文
+	{
+		vmx_vmwrite(VMCS_GUEST_CR3, ctx.cr3);
+
+		vmx_vmwrite(VMCS_GUEST_CR0, ctx.cr0);
+		vmx_vmwrite(VMCS_GUEST_CR4, ctx.cr4);
+
+		vmx_vmwrite(VMCS_GUEST_DR7, ctx.dr7);
+
+		// RIP and RSP are set in vm-launch.asm
+		vmx_vmwrite(VMCS_GUEST_RSP, ctx.rsp);
+		vmx_vmwrite(VMCS_GUEST_RIP, ctx.rip);
+
+		vmx_vmwrite(VMCS_GUEST_RFLAGS, ctx.rflags);
+
+		vmx_vmwrite(VMCS_GUEST_CS_SELECTOR, ctx.cs.flags);
+		vmx_vmwrite(VMCS_GUEST_SS_SELECTOR, ctx.ss.flags);
+		vmx_vmwrite(VMCS_GUEST_DS_SELECTOR, ctx.ds.flags);
+		vmx_vmwrite(VMCS_GUEST_ES_SELECTOR, ctx.es.flags);
+		vmx_vmwrite(VMCS_GUEST_FS_SELECTOR, ctx.fs.flags);
+		vmx_vmwrite(VMCS_GUEST_GS_SELECTOR, ctx.gs.flags);
+		vmx_vmwrite(VMCS_GUEST_TR_SELECTOR, ctx.tr.flags);
+		vmx_vmwrite(VMCS_GUEST_LDTR_SELECTOR, ctx.ldtr.flags);
+
+		vmx_vmwrite(VMCS_GUEST_CS_BASE, ALhvGetSegmentBase(gdtr, ctx.cs));
+		vmx_vmwrite(VMCS_GUEST_SS_BASE, ALhvGetSegmentBase(gdtr, ctx.ss));
+		vmx_vmwrite(VMCS_GUEST_DS_BASE, ALhvGetSegmentBase(gdtr, ctx.ds));
+		vmx_vmwrite(VMCS_GUEST_ES_BASE, ALhvGetSegmentBase(gdtr, ctx.es));
+		vmx_vmwrite(VMCS_GUEST_FS_BASE, __readmsr(IA32_FS_BASE));
+		vmx_vmwrite(VMCS_GUEST_GS_BASE, __readmsr(IA32_GS_BASE));
+		vmx_vmwrite(VMCS_GUEST_TR_BASE, ALhvGetSegmentBase(gdtr, ctx.tr));
+		vmx_vmwrite(VMCS_GUEST_LDTR_BASE, ALhvGetSegmentBase(gdtr, ctx.ldtr));
+
+		vmx_vmwrite(VMCS_GUEST_CS_LIMIT, __segmentlimit(ctx.cs.flags));
+		vmx_vmwrite(VMCS_GUEST_SS_LIMIT, __segmentlimit(ctx.ss.flags));
+		vmx_vmwrite(VMCS_GUEST_DS_LIMIT, __segmentlimit(ctx.ds.flags));
+		vmx_vmwrite(VMCS_GUEST_ES_LIMIT, __segmentlimit(ctx.es.flags));
+		vmx_vmwrite(VMCS_GUEST_FS_LIMIT, __segmentlimit(ctx.fs.flags));
+		vmx_vmwrite(VMCS_GUEST_GS_LIMIT, __segmentlimit(ctx.gs.flags));
+		vmx_vmwrite(VMCS_GUEST_TR_LIMIT, __segmentlimit(ctx.tr.flags));
+		vmx_vmwrite(VMCS_GUEST_LDTR_LIMIT, __segmentlimit(ctx.ldtr.flags));
+
+		vmx_vmwrite(VMCS_GUEST_CS_ACCESS_RIGHTS, ALhvGetVMX_segment(gdtr, ctx.cs).flags);
+		vmx_vmwrite(VMCS_GUEST_SS_ACCESS_RIGHTS, ALhvGetVMX_segment(gdtr, ctx.ss).flags);
+		vmx_vmwrite(VMCS_GUEST_DS_ACCESS_RIGHTS, ALhvGetVMX_segment(gdtr, ctx.ds).flags);
+		vmx_vmwrite(VMCS_GUEST_ES_ACCESS_RIGHTS, ALhvGetVMX_segment(gdtr, ctx.es).flags);
+		vmx_vmwrite(VMCS_GUEST_FS_ACCESS_RIGHTS, ALhvGetVMX_segment(gdtr, ctx.fs).flags);
+		vmx_vmwrite(VMCS_GUEST_GS_ACCESS_RIGHTS, ALhvGetVMX_segment(gdtr, ctx.gs).flags);
+		vmx_vmwrite(VMCS_GUEST_TR_ACCESS_RIGHTS, ALhvGetVMX_segment(gdtr, ctx.tr).flags);
+		vmx_vmwrite(VMCS_GUEST_LDTR_ACCESS_RIGHTS, ALhvGetVMX_segment(gdtr, ctx.ldtr).flags);
+
+		vmx_vmwrite(VMCS_GUEST_GDTR_BASE, gdtr.base_address);
+		vmx_vmwrite(VMCS_GUEST_IDTR_BASE, idtr.base_address);
+
+		vmx_vmwrite(VMCS_GUEST_GDTR_LIMIT, gdtr.limit);
+		vmx_vmwrite(VMCS_GUEST_IDTR_LIMIT, idtr.limit);
+
+		vmx_vmwrite(VMCS_GUEST_SYSENTER_CS, __readmsr(IA32_SYSENTER_CS));
+		vmx_vmwrite(VMCS_GUEST_SYSENTER_ESP, __readmsr(IA32_SYSENTER_ESP));
+		vmx_vmwrite(VMCS_GUEST_SYSENTER_EIP, __readmsr(IA32_SYSENTER_EIP));
+		vmx_vmwrite(VMCS_GUEST_DEBUGCTL, __readmsr(IA32_DEBUGCTL));
+		vmx_vmwrite(VMCS_GUEST_PAT, __readmsr(IA32_PAT));
+		vmx_vmwrite(VMCS_GUEST_PERF_GLOBAL_CTRL, __readmsr(IA32_PERF_GLOBAL_CTRL));
+
+		vmx_vmwrite(VMCS_GUEST_ACTIVITY_STATE, vmx_active);
+
+		vmx_vmwrite(VMCS_GUEST_INTERRUPTIBILITY_STATE, 0);
+
+		vmx_vmwrite(VMCS_GUEST_PENDING_DEBUG_EXCEPTIONS, 0);
+
+		vmx_vmwrite(VMCS_GUEST_VMCS_LINK_POINTER, MAXULONG64);
+
+		vmx_vmwrite(VMCS_GUEST_VMX_PREEMPTION_TIMER_VALUE, MAXULONG64);
+
+
+	}
+
+	ALvmxGuestEnter_asm(core);
+
+	ALhvSetErr("进入出现错误:%s", ALvmxGetVmcsError());
+	//ALdbgStop();
+	return 0;
 
 
 
@@ -298,17 +544,45 @@ bool ALvmxCoreStart(OR_HV_VMX_CORE* core)
 
 
 }
+// enable vm-exits for MTRR MSR writes
+static void enable_mtrr_exiting(vmx_msr_bitmap* msr_bitmap) {
+	ia32_mtrr_capabilities_register mtrr_cap;
+	mtrr_cap.flags = __readmsr(IA32_MTRR_CAPABILITIES);
 
+	enable_exit_for_msr_write(msr_bitmap, IA32_MTRR_DEF_TYPE, true);
+
+	// enable exiting for fixed-range MTRRs
+	if (mtrr_cap.fixed_range_supported) {
+		enable_exit_for_msr_write(msr_bitmap, IA32_MTRR_FIX64K_00000, true);
+		enable_exit_for_msr_write(msr_bitmap, IA32_MTRR_FIX16K_80000, true);
+		enable_exit_for_msr_write(msr_bitmap, IA32_MTRR_FIX16K_A0000, true);
+
+		for (uint32_t i = 0; i < 8; ++i)
+			enable_exit_for_msr_write(msr_bitmap, IA32_MTRR_FIX4K_C0000 + i, true);
+	}
+
+	// enable exiting for variable-range MTRRs
+	for (uint32_t i = 0; i < mtrr_cap.variable_range_count; ++i) {
+		enable_exit_for_msr_write(msr_bitmap, IA32_MTRR_PHYSBASE0 + i * 2, true);
+		enable_exit_for_msr_write(msr_bitmap, IA32_MTRR_PHYSMASK0 + i * 2, true);
+	}
+}
 bool ALvmxInit(OR_HV_VMX* vcpu)
 {
-	auto bitmap = ALhvMMallocateMemory(0x1000);
-	if (!bitmap)
 	{
-		ALhvAddErr("申请内存失败");
-		return 0;
+		auto bitmap = ALhvMMallocateMemory(0x1000);
+		if (!bitmap)
+		{
+			ALhvAddErr("申请内存失败");
+			return 0;
+		}
+
+		vcpu->msr_bitmap.vv = (UINT64)bitmap;
+		vcpu->msr_bitmap.pv = ALhvMMgetPA(bitmap);
+
+		enable_mtrr_exiting(vcpu->msr_bitmap.va);
 	}
-	vcpu->msr_bitmap.vv = (UINT64)bitmap;
-	vcpu->msr_bitmap.pv = ALhvMMgetPA(bitmap);
+
 
 	if (!EPT_CLS::init())
 	{
@@ -355,6 +629,7 @@ bool ALvmxStart(OR_HV_VMX* vcpu)
 		else
 		{
 			ALhvAddErr("%d核心虚拟化失败", i);
+			return 0;
 		}
 
 		//换回原核心
@@ -380,7 +655,7 @@ bool ALvmxStart(OR_HV_VMX* vcpu)
 
 bool ALvmxIsRoot()
 {
-	auto vcpu = ALvmxGetVCPU();
+	auto vcpu = ALvmxGetCurrVcore();
 	if (vcpu)
 		return vcpu->isRoot;
 	return 0;

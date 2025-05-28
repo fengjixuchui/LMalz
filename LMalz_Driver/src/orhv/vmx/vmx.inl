@@ -1,5 +1,16 @@
 #pragma once
 
+// VMWRITE instruction
+inline void vmx_vmwrite(uint64_t const field, uint64_t const value) {
+	__vmx_vmwrite(field, value);
+}
+
+// VMREAD instruction
+inline uint64_t vmx_vmread(uint64_t const field) {
+	uint64_t value;
+	__vmx_vmread(field, &value);
+	return value;
+}
 // helper function that adjusts vmcs control
 // fields according to their capability
 inline void write_vmcs_ctrl_field(size_t value,
@@ -41,17 +52,7 @@ inline bool vmx_vmptrld(uint64_t vmcs_phys_addr) {
 	return __vmx_vmptrld(&vmcs_phys_addr) == 0;
 }
 
-// VMWRITE instruction
-inline void vmx_vmwrite(uint64_t const field, uint64_t const value) {
-	__vmx_vmwrite(field, value);
-}
 
-// VMREAD instruction
-inline uint64_t vmx_vmread(uint64_t const field) {
-	uint64_t value;
-	__vmx_vmread(field, &value);
-	return value;
-}
 
 // write to a guest general-purpose register
 //inline void write_guest_gpr(guest_context* const ctx,
@@ -217,48 +218,6 @@ inline uint16_t current_guest_cpl() {
 	return ss.descriptor_privilege_level;
 }
 
-// increment the instruction pointer after emulating an instruction
-inline void skip_instruction() {
-	// increment RIP
-	auto const old_rip = vmx_vmread(VMCS_GUEST_RIP);
-	auto new_rip = old_rip + vmx_vmread(VMCS_VMEXIT_INSTRUCTION_LENGTH);
-
-	// handle wrap-around for 32-bit addresses
-	// https://patchwork.kernel.org/project/kvm/patch/20200427165917.31799-1-pbonzini@redhat.com/
-	if (old_rip < (1ull << 32) && new_rip >= (1ull << 32)) {
-		vmx_segment_access_rights cs_access_rights;
-		cs_access_rights.flags = static_cast<uint32_t>(
-			vmx_vmread(VMCS_GUEST_CS_ACCESS_RIGHTS));
-
-		// make sure guest is in 32-bit mode
-		if (!cs_access_rights.long_mode)
-			new_rip &= 0xFFFF'FFFF;
-	}
-
-	vmx_vmwrite(VMCS_GUEST_RIP, new_rip);
-
-	// if we're currently blocking interrupts (due to mov ss or sti)
-	// then we should unblock them since we just emulated an instruction
-	auto interrupt_state = read_interruptibility_state();
-	interrupt_state.blocking_by_mov_ss = 0;
-	interrupt_state.blocking_by_sti = 0;
-	write_interruptibility_state(interrupt_state);
-
-	ia32_debugctl_register debugctl;
-	debugctl.flags = vmx_vmread(VMCS_GUEST_DEBUGCTL);
-
-	rflags rflags;
-	rflags.flags = vmx_vmread(VMCS_GUEST_RFLAGS);
-
-	// if we're single-stepping, inject a debug exception
-	// just like normal instruction execution would
-	if (rflags.trap_flag && !debugctl.btf) {
-		vmx_pending_debug_exceptions dbg_exception;
-		dbg_exception.flags = vmx_vmread(VMCS_GUEST_PENDING_DEBUG_EXCEPTIONS);
-		dbg_exception.bs = 1;
-		vmx_vmwrite(VMCS_GUEST_PENDING_DEBUG_EXCEPTIONS, dbg_exception.flags);
-	}
-}
 
 // inject an NMI into the guest
 inline void inject_nmi() {
@@ -271,27 +230,32 @@ inline void inject_nmi() {
 	vmx_vmwrite(VMCS_CTRL_VMENTRY_INTERRUPTION_INFORMATION_FIELD, interrupt_info.flags);
 }
 
-// inject a vectored exception into the guest
-inline void inject_hw_exception(uint32_t const vector) {
-	vmentry_interrupt_information interrupt_info;
-	interrupt_info.flags = 0;
-	interrupt_info.vector = vector;
-	interrupt_info.interruption_type = hardware_exception;
-	interrupt_info.deliver_error_code = 0;
-	interrupt_info.valid = 1;
-	vmx_vmwrite(VMCS_CTRL_VMENTRY_INTERRUPTION_INFORMATION_FIELD, interrupt_info.flags);
-}
-
 // inject a vectored exception into the guest (with an error code)
-inline void inject_hw_exception(uint32_t const vector, uint32_t const error) {
-	vmentry_interrupt_information interrupt_info;
-	interrupt_info.flags = 0;
+inline bool inject_hw_exception(uint32_t const vector, uint32_t const error = 0) {
+	vmentry_interrupt_information interrupt_info = { 0 };
+	if (vector <= 7 || vector == 16 || vector == 18 || vector == 19 || vector == 20)
+	{
+		interrupt_info.deliver_error_code = 0;
+	}
+	else if (vector == 8 || vector == 17)
+	{
+		interrupt_info.deliver_error_code = 1;
+		__vmx_vmwrite(VMCS_CTRL_VMENTRY_EXCEPTION_ERROR_CODE, 0);
+	}
+	else if (vector == 9 || vector == 15 || vector >= 22)
+	{
+		return 0;
+	}
+	else
+	{
+		interrupt_info.deliver_error_code = 1;
+		__vmx_vmwrite(VMCS_CTRL_VMENTRY_EXCEPTION_ERROR_CODE, error);
+	}
 	interrupt_info.vector = vector;
 	interrupt_info.interruption_type = hardware_exception;
-	interrupt_info.deliver_error_code = 1;
 	interrupt_info.valid = 1;
-	vmx_vmwrite(VMCS_CTRL_VMENTRY_INTERRUPTION_INFORMATION_FIELD, interrupt_info.flags);
-	vmx_vmwrite(VMCS_CTRL_VMENTRY_EXCEPTION_ERROR_CODE, error);
+	__vmx_vmwrite(VMCS_CTRL_VMENTRY_INTERRUPTION_INFORMATION_FIELD, interrupt_info.flags);
+	return 1;
 }
 
 // enable/disable vm-exits when the guest tries to read the specified MSR
@@ -308,16 +272,16 @@ inline void enable_exit_for_msr_read(vmx_msr_bitmap& bitmap,
 }
 
 // enable/disable vm-exits when the guest tries to write to the specified MSR
-inline void enable_exit_for_msr_write(vmx_msr_bitmap& bitmap,
+inline void enable_exit_for_msr_write(vmx_msr_bitmap* bitmap,
 	uint32_t const msr, bool const enable_exiting) {
 	auto const bit = static_cast<uint8_t>(enable_exiting ? 1 : 0);
 
 	if (msr <= MSR_ID_LOW_MAX)
 		// set the bit in the low bitmap
-		bitmap.wrmsr_low[msr / 8] = (bit << (msr & 0b0111));
+		bitmap->wrmsr_low[msr / 8] = (bit << (msr & 0b0111));
 	else if (msr >= MSR_ID_HIGH_MIN && msr <= MSR_ID_HIGH_MAX)
 		// set the bit in the high bitmap
-		bitmap.wrmsr_high[(msr - MSR_ID_HIGH_MIN) / 8] = (bit << (msr & 0b0111));
+		bitmap->wrmsr_high[(msr - MSR_ID_HIGH_MIN) / 8] = (bit << (msr & 0b0111));
 }
 
 // enable MTF exiting

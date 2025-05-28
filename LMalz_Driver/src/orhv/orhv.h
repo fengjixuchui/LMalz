@@ -7,17 +7,27 @@
 //#include <ntddk.h>
 
 
-#include "common.h"
+//#include "common.h"
 #include "vcpu.h"
+#include "idt.h"
 //命名规范
 //全局变量g开头接AL带小字母提示模块后加功能性名称
 //静态全局不带AL以下划线代替
 //函数名类似全局变量不带g
 //返回值是bool的如果返回假一定能获取到错误
-//以下所有API均属于Intel CPU,AMD另开文件
+
+#define HV_IO_KEY 'orhv'
+#define HV_IO_SUCCEED 'ORhv'
+#define HV_IO_FAILED 'orHV'
+
+
+
+
+
 
 //--------------------
-
+extern "C" void _sgdt(segment_descriptor_register_64* gdtr);
+extern "C" void _lgdt(segment_descriptor_register_64* gdtr);
 //errput.cpp
 char* _hvErrSetString(const char* format, ...);
 char* _hvErrAddString(const char* format, ...);
@@ -39,7 +49,9 @@ inline bool ALhvIsIntelCPU();
 inline bool ALhvIsAMDCPU();
 int ALhvGetCoreCount();
 int ALhvGetCurrVcoreIndex();
-
+uint64_t ALhvGetSegmentBase(
+	segment_descriptor_register_64 const& gdtr,
+	segment_selector const selector);
 
 
 
@@ -50,8 +62,8 @@ int ALhvGetCurrVcoreIndex();
 //---------------------hvmem.cpp
 bool ALhvMMinitPool();
 
-PUINT8 ALhvMMallocateMemory(UINT64 sizeByByte);
-
+PUINT8 ALhvMMallocateMemory(INT64 sizeByByte);
+bool ALhvMMaccessPhysicalMemory(UINT64 PhysicalAddress, void* bufferAddress, UINT64 size, int isWrite);
 bool ALhvMMsetAllPA(pml4e_64* Hostcr3);
 bool ALhvMMrebuildPath(pml4e_64* page_table_old, pml4e_64* page_table, PVOID vadd, UINT64 size);
 bool ALhvMMrebuildMemPoolPath(pml4e_64* page_table_old, pml4e_64* page_table);
@@ -73,3 +85,7 @@ UINT8 ALhvMMgetMemoryType(UINT64 address, UINT64 size, bool update = 0);
 
 //----------------------------hvasm.asm
 extern "C" UINT64 ALhvGetContext_asm(ORVM_CONTEXT_t*);
+
+
+//-------------------------gdt.cpp
+segment_descriptor_32* ALhvGDTgetHostGDT();

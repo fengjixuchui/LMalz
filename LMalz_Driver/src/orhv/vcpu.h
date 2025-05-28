@@ -29,14 +29,14 @@ typedef struct {
     uint64_t r14;
     uint64_t r15;
 
-    uint16_t cs;
-    uint16_t ds;
-    uint16_t es;
-    uint16_t fs;
-    uint16_t gs;
-    uint16_t ss;
-    uint16_t ldtr;
-    uint16_t tr;
+    segment_selector cs;
+    segment_selector ds;
+    segment_selector es;
+    segment_selector fs;
+    segment_selector gs;
+    segment_selector ss;
+    segment_selector ldtr;
+    segment_selector tr;
 
     uint64_t cr0;
     uint64_t cr1;

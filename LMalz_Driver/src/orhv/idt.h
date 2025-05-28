@@ -112,7 +112,7 @@ static_assert(sizeof(trap_frame) == (0x78 + 0x38), "");
 
 
 typedef bool(*IDT_HANDLER_T)(trap_frame* frame);
-bool ALhvIdtAddHandler(IDT_HANDLER_T handler);
+bool ALhvIdtAddHandler(IDT_HANDLER_T handler, bool toend=0);
 bool ALhvIdtDelHandler(IDT_HANDLER_T handler);
 
 
@@ -138,4 +138,20 @@ UINT64 ALhvIDTgetVector();
 /// </summary>
 /// <returns></returns>
 UINT64 ALhvIDTgetCode();
+
+struct OR_EXCEPTION_INFO
+{
+	bool monitor;  //是否正在监听
+	bool find;	   //是否发现异常
+	UINT32 vector;	//异常向量
+	UINT32 errorCode; //异常代码
+};
+
+const OR_EXCEPTION_INFO* ALhvIDTsafeXsetbv(uint32_t idx, uint64_t value);
+const OR_EXCEPTION_INFO* ALhvIDTsafeRdmsr(__in uint32_t msr, __out UINT64* value);
+const OR_EXCEPTION_INFO* ALhvIDTsafeWrmsr(__in uint32_t msr, __in UINT64 value);
+
+
+
+segment_descriptor_interrupt_gate_64* ALhvIDT_prepare_host_idt();
 

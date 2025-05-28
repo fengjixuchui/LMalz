@@ -166,32 +166,37 @@ struct OR_HV_VMX_REG
 		UINT64 efer;
 	};
 };
-static_assert (offsetof(OR_HV_VMX_REG, rax) == 0, "");
 
-static_assert (offsetof(OR_HV_VMX_REG, xmm0) % 16 == 0, "");
-static_assert (offsetof(OR_HV_VMX_REG, xmm1) % 16 == 0, "");
-static_assert (offsetof(OR_HV_VMX_REG, xmm2) % 16 == 0, "");
-static_assert (offsetof(OR_HV_VMX_REG, xmm3) % 16 == 0, "");
-static_assert (offsetof(OR_HV_VMX_REG, xmm4) % 16 == 0, "");
-static_assert (offsetof(OR_HV_VMX_REG, xmm5) % 16 == 0, "");
-static_assert (offsetof(OR_HV_VMX_REG, xmm6) % 16 == 0, "");
-static_assert (offsetof(OR_HV_VMX_REG, xmm7) % 16 == 0, "");
+
+static_assert (offsetof(OR_HV_VMX_REG, rax) == 0, "需要更新vmx.inc");
+static_assert (offsetof(OR_HV_VMX_REG, efer) == 0x178, "需要更新vmx.inc");
+static_assert (sizeof OR_HV_VMX_REG == 0x180, "需要更新vmx.inc");
+
+
+static_assert (offsetof(OR_HV_VMX_REG, xmm0) == 0x90, "需要更新vmx.inc");
+static_assert (offsetof(OR_HV_VMX_REG, xmm0) % 16 == 0, "需要更新vmx.inc");
+static_assert (offsetof(OR_HV_VMX_REG, xmm1) % 16 == 0, "需要更新vmx.inc");
+static_assert (offsetof(OR_HV_VMX_REG, xmm2) % 16 == 0, "需要更新vmx.inc");
+static_assert (offsetof(OR_HV_VMX_REG, xmm3) % 16 == 0, "需要更新vmx.inc");
+static_assert (offsetof(OR_HV_VMX_REG, xmm4) % 16 == 0, "需要更新vmx.inc");
+static_assert (offsetof(OR_HV_VMX_REG, xmm5) % 16 == 0, "需要更新vmx.inc");
+static_assert (offsetof(OR_HV_VMX_REG, xmm6) % 16 == 0, "需要更新vmx.inc");
+static_assert (offsetof(OR_HV_VMX_REG, xmm7) % 16 == 0, "需要更新vmx.inc");
 
 
 typedef union OR_HV_VMX_CORE_
 {
 	struct
 	{
-		
+
 		OR_HV_VMX_REG reg;//寄存器
 		UINT64 isRoot;	//host or guest
-
 		OR_PTR<vmxon> vmxon;
 		OR_PTR<vmcs> vmcs;
 
 		//vmx_msr_bitmap* msr_bitmap;			 //先抄hv项目,先不共享,写完能跑了慢慢调
 
-		task_state_segment_64* host_tss;	  //记得初始化
+		//task_state_segment_64* host_tss;	  //记得初始化
 		segment_descriptor_32* host_gdt;
 		segment_descriptor_interrupt_gate_64* host_idt;
 		UINT64 queuedNmis;
@@ -208,14 +213,15 @@ typedef union OR_HV_VMX_CORE_
 			vmx_msr_entry mperf;
 		} msr_store;
 		static_assert(sizeof msr_store == 16 * 3, "");
-
-
-
-
 	};
 
 	char stack[VMX_HOST_STACK_SIZE];
 }OR_HV_VMX_CORE;
+
+static_assert (offsetof(OR_HV_VMX_CORE_, isRoot) == 0x180, "需要更新vmx.inc");
+static_assert (VMX_HOST_STACK_SIZE == 0x10000, "需要更新vmx.inc");
+
+
 typedef struct OR_HV_VMX_
 {
 
@@ -223,16 +229,16 @@ typedef struct OR_HV_VMX_
 
 	OR_HV_VMX_CORE* cores;
 
-	OR_PTR<ept_pml4e> eptp;
+	//OR_PTR<ept_pml4e> eptp;	//在模块获取
 
 	OR_PTR<vmx_msr_bitmap> msr_bitmap;
-
-
 
 	cr3 host_cr3;
 
 	cr3 system_cr3;
 
+	segment_descriptor_interrupt_gate_64* host_idt;
+	segment_descriptor_32* host_gdt;
 
 
 

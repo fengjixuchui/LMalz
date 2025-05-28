@@ -157,6 +157,7 @@
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\memory.cpp" />
     <ClCompile Include="src\orhv\errput.cpp" />
+    <ClCompile Include="src\orhv\gdt.cpp" />
     <ClCompile Include="src\orhv\hvmem.cpp" />
     <ClCompile Include="src\orhv\idt.cpp" />
     <ClCompile Include="src\orhv\orhv.cpp" />
@@ -164,6 +165,7 @@
     <ClCompile Include="src\orhv\svm\svm.cpp" />
     <ClCompile Include="src\orhv\vmx\ept.cpp" />
     <ClCompile Include="src\orhv\vmx\vmx.cpp" />
+    <ClCompile Include="src\orhv\vmx\vmx_exitHandler.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\main.h" />
@@ -179,12 +181,15 @@
     <ClInclude Include="src\orhv\vmx\ept.h" />
     <ClInclude Include="src\orhv\vmx\vcpu_vmx.h" />
     <ClInclude Include="src\orhv\vmx\vmx.h" />
+    <ClInclude Include="src\orhv\vmx\vmx_exitHandler.h" />
   </ItemGroup>
   <ItemGroup>
+    <MASM Include="src\orhv\hvasm.asm" />
     <MASM Include="src\orhv\idt_.asm" />
     <MASM Include="src\orhv\vmx\vmxasm.asm" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="src\orhv\vmx\vmx.inc" />
     <None Include="src\orhv\vmx\vmx.inl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

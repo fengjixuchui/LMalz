@@ -34,5 +34,8 @@ typedef struct OR_HV_SVM_
 
 	cr3 system_cr3;
 
+	segment_descriptor_interrupt_gate_64* host_idt;
+	segment_descriptor_32* host_gdt;
+
 
 }OR_HV_SVM;

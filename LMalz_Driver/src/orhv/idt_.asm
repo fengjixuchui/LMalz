@@ -29,7 +29,7 @@ trap_frame struct
 trap_frame ends
 
 
-
+extern ALhvIdtHandler : proc
 .code
 
 ; pushes error code to stack
@@ -61,7 +61,7 @@ proc_name proc
 
   ; call handle_host_interrupt
   sub rsp, 20h
-  call ALvmIdtHandler
+  call ALhvIdtHandler
   add rsp, 20h
 
   mov trap_frame.$vector[rsp],rax ;把获取到的地址放在向量里
@@ -108,7 +108,7 @@ proc_name proc
   ; interrupt vector is stored right before the machine frame
   push interrupt_vector
 
-  jmp ALvmIdtHandler_asm_yes
+  jmp ALhvIdtHandler_asm_yes
 proc_name endp
 endm
 
@@ -121,38 +121,38 @@ proc_name proc
   ; interrupt vector is stored right before the machine frame
   push interrupt_vector
 
-  jmp ALvmIdtHandler_asm_no
+  jmp ALhvIdtHandler_asm_no
 proc_name endp
 endm
 
 
 
-IDT_HANDLER		ALvmIdtHandler_asm_no	,8
-IDT_HANDLER		ALvmIdtHandler_asm_yes	,0
+IDT_HANDLER		ALhvIdtHandler_asm_no	,8
+IDT_HANDLER		ALhvIdtHandler_asm_yes	,0
 
-DEFINE_ISR_NO_ERROR  0, interrupt_handler_00_DE      ;;/** Divide-by-Zero-Error Exception (Vector 0) */    
-DEFINE_ISR_NO_ERROR  1, interrupt_handler_01_DB      ;;/** Debug Exception (Vector 1) */    
-DEFINE_ISR_NO_ERROR  2, interrupt_handler_02_NMI     ;;/** Non-Maskable-Interrupt Exception (Vector 2) */    
-DEFINE_ISR_NO_ERROR  3, interrupt_handler_03_BP      ;;/** Breakpoint Exception (Vector 3) */    
-DEFINE_ISR_NO_ERROR  4, interrupt_handler_04_OF      ;;/** Overflow Exception (Vector 4) */    
-DEFINE_ISR_NO_ERROR  5, interrupt_handler_05_BR      ;;/** Bound-Range Exception (Vector 5) */    
-DEFINE_ISR_NO_ERROR  6, interrupt_handler_06_UD      ;;/** Invalid-Opcode Exception (Vector 6) */    
-DEFINE_ISR_NO_ERROR  7, interrupt_handler_07_NM      ;;/** Device-Not-Available Exception (Vector 7) */    
-DEFINE_ISR           8, interrupt_handler_08_DF      ;;/** Double-Fault Exception (Vector 8) */    
-					            				
-DEFINE_ISR			10, interrupt_handler_10_TS      ;;/** Invalid-TSS Exception (Vector 10) */    
-DEFINE_ISR          11, interrupt_handler_11_NP      ;;/** Segment-Not-Present Exception (Vector 11) */    
-DEFINE_ISR          12, interrupt_handler_12_SS      ;;/** Stack Exception (Vector 12) */    
-DEFINE_ISR          13, interrupt_handler_13_GP      ;;/** General-Protection Exception (Vector 13) */    
-DEFINE_ISR          14, interrupt_handler_14_PF      ;;/** Page-Fault Exception (Vector 14) */    
-						               			
-DEFINE_ISR_NO_ERROR 16, interrupt_handler_16_MF      ;;/** x87 Floating-Point Exception-Pending (Vector 16) */    
-DEFINE_ISR          17, interrupt_handler_17_AC      ;;/** Alignment-Check Exception (Vector 17) */    
-DEFINE_ISR_NO_ERROR 18, interrupt_handler_18_MC      ;;/** Machine-Check Exception (Vector 18) */    
-DEFINE_ISR_NO_ERROR 19, interrupt_handler_19_XF      ;;/** SIMD Floating-Point Exception (Vector 19) */    
-DEFINE_ISR_NO_ERROR 20, interrupt_handler_20_VE      ;;EPT violations This exception can occur only on processors 
-;;														that support the 1-setting of the “EPT-violation #VE” VM-execution control.
-DEFINE_ISR          21, interrupt_handler_21_CP      ;;/** Control-Protection Exception (Vector 21) */  
+DEFINE_ISR_NO_ERROR  0, ALhvIDT_interrupt_handler_00_DE_asm      ;;/** Divide-by-Zero-Error Exception (Vector 0) */    
+DEFINE_ISR_NO_ERROR  1, ALhvIDT_interrupt_handler_01_DB_asm      ;;/** Debug Exception (Vector 1) */    
+DEFINE_ISR_NO_ERROR  2, ALhvIDT_interrupt_handler_02_NMI_asm     ;;/** Non-Maskable-Interrupt Exception (Vector 2) */    
+DEFINE_ISR_NO_ERROR  3, ALhvIDT_interrupt_handler_03_BP_asm      ;;/** Breakpoint Exception (Vector 3) */    
+DEFINE_ISR_NO_ERROR  4, ALhvIDT_interrupt_handler_04_OF_asm      ;;/** Overflow Exception (Vector 4) */    
+DEFINE_ISR_NO_ERROR  5, ALhvIDT_interrupt_handler_05_BR_asm      ;;/** Bound-Range Exception (Vector 5) */    
+DEFINE_ISR_NO_ERROR  6, ALhvIDT_interrupt_handler_06_UD_asm      ;;/** Invalid-Opcode Exception (Vector 6) */    
+DEFINE_ISR_NO_ERROR  7, ALhvIDT_interrupt_handler_07_NM_asm      ;;/** Device-Not-Available Exception (Vector 7) */    
+DEFINE_ISR           8, ALhvIDT_interrupt_handler_08_DF_asm      ;;/** Double-Fault Exception (Vector 8) */    
+
+DEFINE_ISR			10, ALhvIDT_interrupt_handler_10_TS_asm      ;;/** Invalid-TSS Exception (Vector 10) */    
+DEFINE_ISR          11, ALhvIDT_interrupt_handler_11_NP_asm      ;;/** Segment-Not-Present Exception (Vector 11) */    
+DEFINE_ISR          12, ALhvIDT_interrupt_handler_12_SS_asm      ;;/** Stack Exception (Vector 12) */    
+DEFINE_ISR          13, ALhvIDT_interrupt_handler_13_GP_asm      ;;/** General-Protection Exception (Vector 13) */    
+DEFINE_ISR          14, ALhvIDT_interrupt_handler_14_PF_asm      ;;/** Page-Fault Exception (Vector 14) */    
+
+DEFINE_ISR_NO_ERROR 16, ALhvIDT_interrupt_handler_16_MF_asm      ;;/** x87 Floating-Point Exception-Pending (Vector 16) */    
+DEFINE_ISR          17, ALhvIDT_interrupt_handler_17_AC_asm      ;;/** Alignment-Check Exception (Vector 17) */    
+DEFINE_ISR_NO_ERROR 18, ALhvIDT_interrupt_handler_18_MC_asm      ;;/** Machine-Check Exception (Vector 18) */    
+DEFINE_ISR_NO_ERROR 19, ALhvIDT_interrupt_handler_19_XF_asm      ;;/** SIMD Floating-Point Exception (Vector 19) */    
+DEFINE_ISR_NO_ERROR 20, ALhvIDT_interrupt_handler_20_VE_asm      ;;EPT violations This exception can occur only on processors 
+;;														       that support the 1-setting of the “EPT-violation #VE” VM-execution control.
+DEFINE_ISR          21, ALhvIDT_interrupt_handler_21_CP_asm      ;;/** Control-Protection Exception (Vector 21) */  
 
 
 
@@ -162,15 +162,15 @@ ALhvIDTreadMemory64_asm proc
 ALhvIDTreadMemory64_asm endp   
 
 ALhvIDTreadMemory32_asm proc
-	mov rax,dword ptr[rcx]
+	mov eax,dword ptr[rcx]
 	ret
 ALhvIDTreadMemory32_asm endp	 
 ALhvIDTreadMemory16_asm proc
-	mov rax,word ptr[rcx]
+	mov ax,word ptr[rcx]
 	ret
 ALhvIDTreadMemory16_asm endp	
 ALhvIDTreadMemory8_asm proc
-	mov rax,byte ptr[rcx]
+	mov al,byte ptr[rcx]
 	ret
 ALhvIDTreadMemory8_asm endp			
 
@@ -183,24 +183,49 @@ ALhvIDTwriteMemory64_asm proc
 ALhvIDTwriteMemory64_asm endp   
 
 ALhvIDTwriteMemory32_asm proc
-	mov rax,dword ptr[rdx]
-	mov dword ptr[rcx],rax
+	mov eax,dword ptr[rdx]
+	mov dword ptr[rcx],eax
 	ret
 ALhvIDTwriteMemory32_asm endp	  
 
 ALhvIDTwriteMemory16_asm proc
-	mov rax,word ptr[rdx]
-	mov word ptr[rcx],rax
+	mov ax,word ptr[rdx]
+	mov word ptr[rcx],ax
 	ret
 ALhvIDTwriteMemory16_asm endp	  
 
 ALhvIDTwriteMemory8_asm proc
-	mov rax,byte ptr[rdx]
-	mov byte ptr[rcx],rax
+	mov al,byte ptr[rdx]
+	mov byte ptr[rcx],al
 	ret
 ALhvIDTwriteMemory8_asm endp
 
+ALhvIDTxsetbv_asm proc
+	and rcx,0ffffffffh
+	mov eax,edx
+	shr rdx, 32
+	xsetbv
+	ret
+ALhvIDTxsetbv_asm endp
 
+
+ALhvIDTrdmsr_asm proc
+
+	rdmsr	
+	shl rdx,32
+	or rax,rdx
+	ret
+	
+ALhvIDTrdmsr_asm endp
+
+ALhvIDTwrmsr_asm proc
+
+	mov eax,edx
+	shr rdx,32
+	wrmsr
+	ret
+	
+ALhvIDTwrmsr_asm endp
 
 
 end

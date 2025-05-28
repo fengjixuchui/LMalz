@@ -6,6 +6,7 @@
 OR_HV_SVM* gALsvmVCPU = 0;
 bool ALsvmCoreStart(OR_HV_SVM_CORE* core)
 {
+	core;
 	ALhvSetErr("н╢й╣ож");
 	return 0;
 }

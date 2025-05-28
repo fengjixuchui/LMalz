@@ -1,5 +1,5 @@
 #include "orhv.h"
-
+#pragma warning(disable:4505)
 
 #define MiGetPxeAddress(BASE, VA) ((UINT64)BASE + ((UINT32)(((UINT64)(VA) >> 39) & 0x1FF)))
 #define MiGetPpeAddress(BASE, VA) ((UINT64)(((((UINT64)VA & 0xFFFFFFFFFFFF) >> 30) << 3) + BASE))
@@ -60,7 +60,12 @@ bool ALhvMMinitPool()
 		return 0;
 	}
 }
-PUINT8 ALhvMMallocateMemory(UINT64 sizeByByte)
+bool ALhvFreePool()
+{
+	MmFreeContiguousMemory(g_hvMMpool);
+	return 1;
+}
+PUINT8 ALhvMMallocateMemory(INT64 sizeByByte)
 {
 	if (!g_hvMMpool)
 	{
@@ -69,9 +74,9 @@ PUINT8 ALhvMMallocateMemory(UINT64 sizeByByte)
 	}
 	if (sizeByByte >= 0x1000)//如果大于一个页,按页申请
 	{
-		auto a_size = ALIGNS_PAGE(sizeByByte);
+		auto a_size = (INT64)ALIGNS_PAGE(sizeByByte);
 		auto oldOff = InterlockedExchangeAdd64(&g_hvMMpoolUsable, a_size);
-		if (oldOff + a_size <= g_hvMMpoolBigMemEnd)
+		if ((oldOff + a_size) <= g_hvMMpoolBigMemEnd)
 			return &g_hvMMpool[oldOff];
 		else
 		{
@@ -225,10 +230,15 @@ bool ALhvMMaccessPhysicalMemory(UINT64 PhysicalAddress, void* bufferAddress, UIN
 		//尝试直接获取虚拟地址
 		if (size <= 0x1000 && (((PhysicalAddress + size) & ~0xfffLL) == (PhysicalAddress & ~0xfffLL)))
 		{
-			
-
-
-
+			auto va = ALhvMMgetVA(PhysicalAddress);
+			if (va)
+			{
+				if (isWrite)
+					CopyData(va, bufferAddress, size);
+				else
+					CopyData(bufferAddress, va, size);
+				return 1;
+			}
 		}
 
 		auto ret = AccessPhysicalMemory((PVOID)PhysicalAddress, bufferAddress, size, isWrite);
@@ -624,53 +634,53 @@ typedef union CR3_STRUCT_
 	};
 } CR3_STRUCT;
 
-static NTSTATUS GetPteBase(PUINT8 pBuffer[]) 
-{
-
-	NTSTATUS Result = STATUS_SUCCESS;
-
-	{
-
-		PHYSICAL_ADDRESS PML4;
-
-		CR3_STRUCT cr3 = { 0 };
-		cr3.value = __readcr3();
-
-		PML4.QuadPart = cr3.pml4_p << 12;
-
-		PVOID VirtualAddress = MmGetVirtualForPhysical(PML4);
-		/*{
-			get_fun(DbgPrintEx);
-			get_fun(MmGetPhysicalAddress);
-			UINT8 put[] = { '[','O','M','R','I',']','v','t','p','%','p','\n','\0' };
-			DbgPrintEx(0, 0, (char*)put, MmGetPhysicalAddress(MmGetVirtualForPhysical));
-		}*/
-		if (MmIsAddressValid(VirtualAddress)) {
-
-			PMMPTE PageDirectory = (PMMPTE)(PAGE_ALIGN(VirtualAddress));
-
-			for (SIZE_T Index = 0;; Index++) {
-
-				if (PageDirectory[Index].u.Hard.PageFrameNumber == (UINT64)(PML4.QuadPart >> PAGE_SHIFT)) {
-
-					pBuffer[0] = (PUINT8)((UINT64)(Index << 39) | (UINT64)(0xFFFF'0000'0000'0000));
-
-					pBuffer[1] = (PUINT8)((UINT64)(Index << 30) | (UINT64)(pBuffer[0]));
-
-					pBuffer[2] = (PUINT8)((UINT64)(Index << 21) | (UINT64)(pBuffer[1]));
-
-					pBuffer[3] = (PUINT8)((UINT64)(Index << 12) | (UINT64)(pBuffer[2]));
-
-					Result = STATUS_SUCCESS;
-
-					break;
-				}
-			}
-		}
-	}
-
-	return Result;
-}
+//static NTSTATUS GetPteBase(PUINT8 pBuffer[]) 
+//{
+//
+//	NTSTATUS Result = STATUS_SUCCESS;
+//
+//	{
+//
+//		PHYSICAL_ADDRESS PML4;
+//
+//		CR3_STRUCT cr3 = { 0 };
+//		cr3.value = __readcr3();
+//
+//		PML4.QuadPart = cr3.pml4_p << 12;
+//
+//		PVOID VirtualAddress = MmGetVirtualForPhysical(PML4);
+//		/*{
+//			get_fun(DbgPrintEx);
+//			get_fun(MmGetPhysicalAddress);
+//			UINT8 put[] = { '[','O','M','R','I',']','v','t','p','%','p','\n','\0' };
+//			DbgPrintEx(0, 0, (char*)put, MmGetPhysicalAddress(MmGetVirtualForPhysical));
+//		}*/
+//		if (MmIsAddressValid(VirtualAddress)) {
+//
+//			PMMPTE PageDirectory = (PMMPTE)(PAGE_ALIGN(VirtualAddress));
+//
+//			for (SIZE_T Index = 0;; Index++) {
+//
+//				if (PageDirectory[Index].u.Hard.PageFrameNumber == (UINT64)(PML4.QuadPart >> PAGE_SHIFT)) {
+//
+//					pBuffer[0] = (PUINT8)((UINT64)(Index << 39) | (UINT64)(0xFFFF'0000'0000'0000));
+//
+//					pBuffer[1] = (PUINT8)((UINT64)(Index << 30) | (UINT64)(pBuffer[0]));
+//
+//					pBuffer[2] = (PUINT8)((UINT64)(Index << 21) | (UINT64)(pBuffer[1]));
+//
+//					pBuffer[3] = (PUINT8)((UINT64)(Index << 12) | (UINT64)(pBuffer[2]));
+//
+//					Result = STATUS_SUCCESS;
+//
+//					break;
+//				}
+//			}
+//		}
+//	}
+//
+//	return Result;
+//}
 
 
 static NTSTATUS AccessPhysicalMemory(void* PhysicalAddress, void* bufferAddress, UINT64 size, int isWrite)
