@@ -17,4 +17,5 @@ extern "C" void ALvmxHostEnter_asm();
 extern "C" void ALvmxGuestEnter_asm(OR_HV_VMX_CORE*);
 
 //vmx_exitHandler.cpp
+bool ALvmxVmexitInit();
 inline void vmx_increment_rip(OR_HV_VMX_CORE* vcpu);

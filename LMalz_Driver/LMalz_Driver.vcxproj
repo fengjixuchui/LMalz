@@ -164,6 +164,8 @@
     <ClCompile Include="src\orhv\orhv_bf.cpp" />
     <ClCompile Include="src\orhv\svm\svm.cpp" />
     <ClCompile Include="src\orhv\vmx\ept.cpp" />
+    <ClCompile Include="src\orhv\vmx\mods\monitor.cpp" />
+    <ClCompile Include="src\orhv\vmx\mods\R_X_isolate.cpp" />
     <ClCompile Include="src\orhv\vmx\vmx.cpp" />
     <ClCompile Include="src\orhv\vmx\vmx_exitHandler.cpp" />
   </ItemGroup>

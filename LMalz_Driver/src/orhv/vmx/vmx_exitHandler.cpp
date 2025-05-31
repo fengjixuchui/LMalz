@@ -107,7 +107,7 @@ inline void vmx_increment_rip(OR_HV_VMX_CORE* vcpu) {
 }
 static bool vmx_handler_cpuid(OR_HV_VMX_CORE* vcpu, bool is2)
 {
-	if (vcpu->reg.rax == HV_IO_KEY)   //只在第二次分发处理
+	if (vcpu->reg.rax == HV_IO_KEY)    
 	{
 		vcpu->reg.rax = HV_IO_SUCCEED;
 		vmx_increment_rip(vcpu);
@@ -383,21 +383,23 @@ bool ALvmxVmexitInit()
 	handlers[VMX_EXIT_REASON_EXECUTE_CPUID].add_fun(vmx_handler_cpuid);		 //仅用作探测ORHV
 	handlers[VMX_EXIT_REASON_EXECUTE_GETSEC].add_fun(vmx_handler_getsec);
 	handlers[VMX_EXIT_REASON_EXECUTE_INVD].add_fun(vmx_handler_invd);
-	handlers[VMX_EXIT_REASON_EXECUTE_RDTSC].add_fun(vmx_handler_rdtsc);
 
-	handlers[VMX_EXIT_REASON_EXECUTE_RDTSCP].add_fun(vmx_handler_rdtscp);
+	//handlers[VMX_EXIT_REASON_EXECUTE_RDTSC].add_fun(vmx_handler_rdtsc);
+	//handlers[VMX_EXIT_REASON_EXECUTE_RDTSCP].add_fun(vmx_handler_rdtscp);
+
 	handlers[VMX_EXIT_REASON_EXECUTE_XSETBV].add_fun(vmx_handler_xsetbv);
+
 	handlers[VMX_EXIT_REASON_EXECUTE_RDMSR].add_fun(vmx_handler_msr_read);
 	handlers[VMX_EXIT_REASON_EXECUTE_WRMSR].add_fun(vmx_handler_msr_write);
 
 	handlers[VMX_EXIT_REASON_MONITOR_TRAP_FLAG].add_fun(vmx_handler_monitor_trap_flag);
 
+	//handlers[VMX_EXIT_REASON_VMX_PREEMPTION_TIMER_EXPIRED].add_fun(vmx_handler_preemption_timer);
+
+	handlers[VMX_EXIT_REASON_EPT_VIOLATION].add_fun(vmx_handler_ept_violation);	  //ept
+
 	handlers[VMX_EXIT_REASON_EXECUTE_VMXON].add_fun(vmx_handler_vmon);
 	handlers[VMX_EXIT_REASON_EXECUTE_VMCALL].add_fun(vmx_handler_vmcall);
-
-	handlers[VMX_EXIT_REASON_VMX_PREEMPTION_TIMER_EXPIRED].add_fun(vmx_handler_preemption_timer);	  //ept
-
-	handlers[VMX_EXIT_REASON_EPT_MISCONFIGURATION].add_fun(vmx_handler_ept_violation);	  //ept
 
 	handlers[VMX_EXIT_REASON_EXECUTE_INVEPT].add_fun(handle_vmx_instruction);
 	handlers[VMX_EXIT_REASON_EXECUTE_INVVPID].add_fun(handle_vmx_instruction);

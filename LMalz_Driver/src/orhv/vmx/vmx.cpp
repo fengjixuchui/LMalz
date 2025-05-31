@@ -312,6 +312,9 @@ bool ALvmxCoreStart(OR_HV_VMX_CORE* core)
 			__vmx_vmwrite(VMCS_CTRL_MSR_BITMAP_ADDRESS, gALvmxVCPU->msr_bitmap.pv);
 		}
 		proc_based_ctrl.use_tsc_offsetting = 1;		 //tsc偏移
+		{
+			__vmx_vmwrite(VMCS_CTRL_TSC_OFFSET, 0);
+		}
 		proc_based_ctrl.activate_secondary_controls = 1;  //启用拓展控制位
 		write_ctrl_proc_based_safe(proc_based_ctrl);
 	}
@@ -328,7 +331,7 @@ bool ALvmxCoreStart(OR_HV_VMX_CORE* core)
 		proc_based_ctrl2.enable_rdtscp = 1;		//rdtscp指令exit
 		proc_based_ctrl2.enable_vpid = 1;		//启用缓存标识
 		{
-			__vmx_vmwrite(VMCS_CTRL_VIRTUAL_PROCESSOR_IDENTIFIER, ALhvGetCurrVcoreIndex() + 1);
+			__vmx_vmwrite(VMCS_CTRL_VIRTUAL_PROCESSOR_IDENTIFIER, (UINT64)ALhvGetCurrVcoreIndex() + 1);
 		}
 		proc_based_ctrl2.enable_invpcid = 1;	//..
 		proc_based_ctrl2.enable_xsaves = 1;		//..
@@ -589,7 +592,11 @@ bool ALvmxInit(OR_HV_VMX* vcpu)
 		ALhvAddErr("EPT初始化失败");
 		return 0;
 	}
-
+	if (!ALvmxVmexitInit())
+	{
+		ALhvAddErr("vmeixt_handler初始化失败");
+		return 0;
+	}
 	return 1;
 }
 

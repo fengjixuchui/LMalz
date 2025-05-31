@@ -103,9 +103,27 @@ ALvmxHostEnter_asm proc
   mov rcx, rsp
   add rsp, gALvmxHostStackSize
   sub rsp, 10h
+  ;获取tsc
+  MFENCE
+  rdtsc
+  shl rdx,32
+  or rdx,rax
+  mov r15 rdx 
+  ;调用处理
   sub rsp, 100h
   call ALvmxExitHandler
   add rsp, 100h
+
+  ;再次获取tsc
+  MFENCE
+   rdtsc
+  shl rdx,32
+  or rdx,rax
+
+  ;设置tsc偏移
+  sub rdx,r15
+  mov rcx, 2010h ; VMCS_CTRL_TSC_OFFSET
+  vmwrite rcx, rdx
 
   ;-------------------------------------------------
 

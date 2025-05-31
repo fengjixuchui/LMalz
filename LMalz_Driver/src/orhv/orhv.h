@@ -62,6 +62,8 @@ uint64_t ALhvGetSegmentBase(
 //---------------------hvmem.cpp
 bool ALhvMMinitPool();
 
+bool ALhvMMCopyData(PVOID desAdd, PVOID souAdd, UINT64 size);
+
 PUINT8 ALhvMMallocateMemory(INT64 sizeByByte);
 bool ALhvMMaccessPhysicalMemory(UINT64 PhysicalAddress, void* bufferAddress, UINT64 size, int isWrite);
 bool ALhvMMsetAllPA(pml4e_64* Hostcr3);

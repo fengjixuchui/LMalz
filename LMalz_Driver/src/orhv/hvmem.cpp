@@ -13,7 +13,6 @@ static void FreeMemory(PVOID add);
 static PVOID GetVA(UINT64 pa);
 static NTSTATUS GetPteBase(PUINT8 pBuffer[]);
 static NTSTATUS AccessPhysicalMemory(void* PhysicalAddress, void* bufferAddress, UINT64 size, int isWrite);
-static NTSTATUS CopyData(PVOID desAdd, PVOID souAdd, UINT64 size);
 static UINT64 GetPA(PVOID Vadd);
 
 
@@ -217,9 +216,9 @@ bool ALhvMMaccessPhysicalMemory(UINT64 PhysicalAddress, void* bufferAddress, UIN
 		if (ALhvMMgetPoolBase())
 		{
 			if (isWrite)
-				CopyData(&ALhvMMgetPoolBase()[PhysicalAddress], bufferAddress, size);
+				ALhvMMCopyData(&ALhvMMgetPoolBase()[PhysicalAddress], bufferAddress, size);
 			else
-				CopyData(bufferAddress, &ALhvMMgetPoolBase()[PhysicalAddress], size);
+				ALhvMMCopyData(bufferAddress, &ALhvMMgetPoolBase()[PhysicalAddress], size);
 			return 1;
 		}
 		ALhvSetErr("Î´Öª´íÎó");
@@ -234,9 +233,9 @@ bool ALhvMMaccessPhysicalMemory(UINT64 PhysicalAddress, void* bufferAddress, UIN
 			if (va)
 			{
 				if (isWrite)
-					CopyData(va, bufferAddress, size);
+					ALhvMMCopyData(va, bufferAddress, size);
 				else
-					CopyData(bufferAddress, va, size);
+					ALhvMMCopyData(bufferAddress, va, size);
 				return 1;
 			}
 		}
@@ -741,7 +740,7 @@ static NTSTATUS AccessPhysicalMemory(void* PhysicalAddress, void* bufferAddress,
 	return status;
 }
 
-static NTSTATUS CopyData(PVOID desAdd, PVOID souAdd, UINT64 size)
+ bool ALhvMMCopyData(PVOID desAdd, PVOID souAdd, UINT64 size)
 {
 
 	for (UINT64 i = 0; i < size / 8; i++)
@@ -757,7 +756,7 @@ static NTSTATUS CopyData(PVOID desAdd, PVOID souAdd, UINT64 size)
 	{
 		((PUINT8)desAdd)[j] = ((PUINT8)souAdd)[j];
 	}
-	return 0;
+	return 1;
 }
 static UINT64 GetPA(PVOID Vadd)
 {

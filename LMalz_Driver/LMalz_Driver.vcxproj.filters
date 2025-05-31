@@ -26,6 +26,9 @@
     <Filter Include="Source Files\orhv\svm">
       <UniqueIdentifier>{6723265d-9455-4897-a52b-5eb0d543ea3d}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\orhv\vmx\mods">
+      <UniqueIdentifier>{3a689118-6ec8-46bd-bbb4-d86adbcb794a}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <Inf Include="LMalz_Driver.inf">
@@ -68,6 +71,12 @@
     </ClCompile>
     <ClCompile Include="src\orhv\vmx\vmx_exitHandler.cpp">
       <Filter>Source Files\orhv\vmx</Filter>
+    </ClCompile>
+    <ClCompile Include="src\orhv\vmx\mods\R_X_isolate.cpp">
+      <Filter>Source Files\orhv\vmx\mods</Filter>
+    </ClCompile>
+    <ClCompile Include="src\orhv\vmx\mods\monitor.cpp">
+      <Filter>Source Files\orhv\vmx\mods</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
