@@ -31,11 +31,15 @@ extern "C" void _lgdt(segment_descriptor_register_64* gdtr);
 //errput.cpp
 char* _hvErrSetString(const char* format, ...);
 char* _hvErrAddString(const char* format, ...);
+char* _hvErrGetString();
 #define ALhvSetErr(a,...) _hvErrSetString( __FUNCTION__ "(%d):\t" a,__LINE__, __VA_ARGS__)
 #define ALhvAddErr(a,...) _hvErrAddString("\nFROM:" __FUNCTION__ "(%d):\t" a,__LINE__, __VA_ARGS__)
 #define ALhvGetErr() _hvErrGetString()
 #define ALhvKill(a,b) KeBugCheckEx(('or'<<16)+__LINE__,(ULONG_PTR)(a),(ULONG_PTR)(b),(ULONG_PTR)__FUNCTION__,(ULONG_PTR)__LINE__)
 
+#define dbgPut(a,...) DbgPrintEx(0,0,a,__VA_ARGS__)
+
+#define ALhvPutLog(a,...) dbgPut("[OMRI]-->{" __FUNCTION__ "}\t/%d/:" a "\n",__LINE__,__VA_ARGS__) 
 
 
 //-------------------------orhv.cpp

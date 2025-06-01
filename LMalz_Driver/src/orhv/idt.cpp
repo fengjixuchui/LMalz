@@ -10,6 +10,7 @@ static OR_EXCEPTION_INFO* g_idt_infos = 0;
 
 typedef HANDLER_CLS<IDT_HANDLER_T> IDT_HANDLERS;
 IDT_HANDLERS* idt_handlers;
+//IDT_HANDLER_T IDT_HANDLERS::_null_fun_v = 0;
 
 extern "C" void ALhvIDT_interrupt_handler_00_DE_asm();
 extern "C" void ALhvIDT_interrupt_handler_01_DB_asm();

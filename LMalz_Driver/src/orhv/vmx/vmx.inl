@@ -298,3 +298,7 @@ inline void disable_monitor_trap_flag() {
 	write_ctrl_proc_based(control);
 }
 
+inline void set_ept(ept_pointer v)
+{
+	__vmx_vmwrite(VMCS_CTRL_EPT_POINTER, v.flags);
+}

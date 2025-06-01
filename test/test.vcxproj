@@ -131,6 +131,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <Optimization>Disabled</Optimization>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -146,6 +147,21 @@
     <ClCompile Include="test2.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
     </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="resource.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="..\..\..\ALJT\Code\omri\include\resource\omri3\omri3.rc" />
+    <ResourceCompile Include="test.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\x64\Release\LMalz_Driver.sys" />
+  </ItemGroup>
+  <ItemGroup>
+    <Library Include="..\..\..\ALJT\Code\omri\include\VMProtect\VMProtect\VMProtectSDK64.lib" />
+    <Library Include="..\..\..\ALJT\Code\omri\x64\Release\omri.lib" />
+    <Library Include="..\..\..\ALJT\Code\omri\x64\Release\omri3.lib" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

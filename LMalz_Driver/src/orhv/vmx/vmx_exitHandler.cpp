@@ -1,8 +1,7 @@
 #include "vmx.h"
-#include "vmx_exitHandler.h"
 #include "vmx.inl"
 
-
+//VMEXIT_HANDLER_T VMEXIT_HANDLERS_CLS::_null_fun_v = 0;
 #pragma  warning( push )
 #pragma warning(disable:4100)
 static bool vmx_handler_exception_nmi(OR_HV_VMX_CORE* vcpu, bool) {
@@ -140,18 +139,18 @@ static bool vmx_handler_invd(OR_HV_VMX_CORE* vcpu, bool is2) {
 	return 1;
 }		  	 
 
-static bool vmx_handler_rdtsc(OR_HV_VMX_CORE* vcpu, bool is2) {
-
-	auto const tsc = __rdtsc();
-
-	// return current TSC
-	vcpu->reg.rax = tsc & 0xFFFFFFFF;
-	vcpu->reg.rdx = (tsc >> 32) & 0xFFFFFFFF;
-
-	vmx_increment_rip(vcpu);
-
-	return 1;
-}
+//static bool vmx_handler_rdtsc(OR_HV_VMX_CORE* vcpu, bool is2) {
+//
+//	auto const tsc = __rdtsc();
+//
+//	// return current TSC
+//	vcpu->reg.rax = tsc & 0xFFFFFFFF;
+//	vcpu->reg.rdx = (tsc >> 32) & 0xFFFFFFFF;
+//
+//	vmx_increment_rip(vcpu);
+//
+//	return 1;
+//}
 static bool vmx_handler_xsetbv(OR_HV_VMX_CORE* vcpu, bool is2)
 {
 	// 3.2.6
@@ -299,9 +298,9 @@ static bool vmx_handler_vmcall(OR_HV_VMX_CORE* vcpu, bool is2) {
 	inject_hw_exception(invalid_opcode);
 	return 1;
 }	  
-static bool vmx_handler_preemption_timer(OR_HV_VMX_CORE* vcpu, bool is2) {
+/*static bool vmx_handler_preemption_timer(OR_HV_VMX_CORE* vcpu, bool is2) {
 	return 1;
-}  	  
+}  */	  
 static bool vmx_handler_monitor_trap_flag(OR_HV_VMX_CORE* vcpu, bool is2) {
 	if (!is2)
 		return 0;
@@ -309,18 +308,18 @@ static bool vmx_handler_monitor_trap_flag(OR_HV_VMX_CORE* vcpu, bool is2) {
 	disable_monitor_trap_flag();
 	return 1;
 }  	  
-static bool vmx_handler_rdtscp(OR_HV_VMX_CORE* vcpu, bool is2) {
-
-	unsigned int aux = 0;
-	auto const tsc = __rdtscp(&aux);
-
-	// return current TSC
-	vcpu->reg.rax = tsc & 0xFFFFFFFF;
-	vcpu->reg.rdx = (tsc >> 32) & 0xFFFFFFFF;
-	vcpu->reg.rcx = aux;
-
-	return 1;
-}
+//static bool vmx_handler_rdtscp(OR_HV_VMX_CORE* vcpu, bool is2) {
+//
+//	unsigned int aux = 0;
+//	auto const tsc = __rdtscp(&aux);
+//
+//	// return current TSC
+//	vcpu->reg.rax = tsc & 0xFFFFFFFF;
+//	vcpu->reg.rdx = (tsc >> 32) & 0xFFFFFFFF;
+//	vcpu->reg.rcx = aux;
+//
+//	return 1;
+//}
 static bool vmx_handler_ept_violation(OR_HV_VMX_CORE* vcpu, bool is2) {
 
 	if(!is2)
@@ -431,4 +430,9 @@ extern "C" void ALvmxExitHandler(OR_HV_VMX_CORE * vcpu)
 
 	return;
 
+}
+
+VMEXIT_HANDLERS_CLS* ALvmxGetExitHandlers()
+{
+	return vmeixt_handlers;
 }

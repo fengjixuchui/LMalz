@@ -8,7 +8,7 @@ class HANDLER_CLS
 	volatile T handlers[HANDLER_LIMIT];
 	char handler_link[HANDLER_LIMIT]; //单向链表省空间
 	char handler_start;				  //链表开始
-	static T _null_fun_v;
+	T _null_fun_v;
 	template <typename... Args>
 	static bool _null(Args... args)
 	{

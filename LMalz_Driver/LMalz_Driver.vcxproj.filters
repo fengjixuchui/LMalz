@@ -122,6 +122,9 @@
     <ClInclude Include="src\orhv\vmx\vmx_exitHandler.h">
       <Filter>Source Files\orhv\vmx</Filter>
     </ClInclude>
+    <ClInclude Include="src\dbgput.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <MASM Include="src\orhv\idt_.asm">

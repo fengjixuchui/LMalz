@@ -22,4 +22,25 @@
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="resource.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="test.rc">
+      <Filter>资源文件</Filter>
+    </ResourceCompile>
+    <ResourceCompile Include="..\..\..\ALJT\Code\omri\include\resource\omri3\omri3.rc">
+      <Filter>资源文件</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\x64\Release\LMalz_Driver.sys" />
+  </ItemGroup>
+  <ItemGroup>
+    <Library Include="..\..\..\ALJT\Code\omri\x64\Release\omri3.lib" />
+    <Library Include="..\..\..\ALJT\Code\omri\include\VMProtect\VMProtect\VMProtectSDK64.lib" />
+    <Library Include="..\..\..\ALJT\Code\omri\x64\Release\omri.lib" />
+  </ItemGroup>
 </Project>

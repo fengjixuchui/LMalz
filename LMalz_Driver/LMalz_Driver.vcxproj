@@ -73,7 +73,7 @@
     <TargetVersion>Windows10</TargetVersion>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>WindowsKernelModeDriver10.0</PlatformToolset>
-    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <ConfigurationType>driver</ConfigurationType>
     <DriverType>KMDF</DriverType>
     <DriverTargetPlatform>Universal</DriverTargetPlatform>
   </PropertyGroup>
@@ -146,6 +146,9 @@
     <ClCompile>
       <LanguageStandard>Default</LanguageStandard>
     </ClCompile>
+    <Link>
+      <EntryPointSymbol>main</EntryPointSymbol>
+    </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <Inf Include="LMalz_Driver.inf" />
@@ -170,6 +173,7 @@
     <ClCompile Include="src\orhv\vmx\vmx_exitHandler.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\dbgput.h" />
     <ClInclude Include="src\main.h" />
     <ClInclude Include="src\orhv\common.h" />
     <ClInclude Include="src\orhv\handler_class.h" />

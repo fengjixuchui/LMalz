@@ -197,8 +197,8 @@ typedef union OR_HV_VMX_CORE_
 		//vmx_msr_bitmap* msr_bitmap;			 //先抄hv项目,先不共享,写完能跑了慢慢调
 
 		//task_state_segment_64* host_tss;	  //记得初始化
-		segment_descriptor_32* host_gdt;
-		segment_descriptor_interrupt_gate_64* host_idt;
+		//segment_descriptor_32* host_gdt;
+		//segment_descriptor_interrupt_gate_64* host_idt;
 		UINT64 queuedNmis;
 
 		// vm-exit MSR store area

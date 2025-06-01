@@ -108,7 +108,7 @@ ALvmxHostEnter_asm proc
   rdtsc
   shl rdx,32
   or rdx,rax
-  mov r15 rdx 
+  mov r15,rdx 
   ;调用处理
   sub rsp, 100h
   call ALvmxExitHandler
@@ -121,9 +121,9 @@ ALvmxHostEnter_asm proc
   or rdx,rax
 
   ;设置tsc偏移
-  sub rdx,r15
-  mov rcx, 2010h ; VMCS_CTRL_TSC_OFFSET
-  vmwrite rcx, rdx
+  ;sub rdx,r15
+  ;mov rcx, 2010h ; VMCS_CTRL_TSC_OFFSET
+  ;vmwrite rcx, rdx
 
   ;-------------------------------------------------
 

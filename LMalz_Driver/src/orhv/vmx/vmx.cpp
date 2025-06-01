@@ -104,7 +104,7 @@ char* ALvmxGetVmcsError()
 	}
 	return errorString;
 }
-UINT64 gALvmxHostStackSize = VMX_HOST_STACK_SIZE;
+extern "C" UINT64 gALvmxHostStackSize = VMX_HOST_STACK_SIZE;
 // calculate a segment's access rights
 vmx_segment_access_rights ALhvGetVMX_segment(
 	segment_descriptor_register_64 const& gdtr,
@@ -222,9 +222,11 @@ bool ALvmxCoreStart(OR_HV_VMX_CORE* core)
 	// 3.24.11.5
 	vmxon->revision_id = vmx_basic.vmcs_revision_id;
 	vmxon->must_be_zero = 0;
+	ALhvPutLog("%p", vmxon.vv);
+	ALhvPutLog("%p", vmxon.pv);
 
 	// 启用虚拟化,进入non-root模式
-	if (!__vmx_on(&vmxon.pv)) {
+	if (__vmx_on(&vmxon.pv)) {
 		ALhvSetErr("[hv] VMXON failed.\n");
 		return 0;
 	}
@@ -237,12 +239,12 @@ bool ALvmxCoreStart(OR_HV_VMX_CORE* core)
 	vmcs->revision_id = vmx_basic.vmcs_revision_id;
 	vmcs->shadow_vmcs_indicator = 0;
 
-	if (!__vmx_vmclear(&vmcs.pv)) {
+	if (__vmx_vmclear(&vmcs.pv)) {
 		ALhvSetErr("[hv] VMCLEAR failed.\n");
 		return false;
 	}
 
-	if (!__vmx_vmptrld(&vmcs.pv)) {
+	if (__vmx_vmptrld(&vmcs.pv)) {
 		ALhvSetErr("[hv] VMPTRLD failed.\n");
 		return false;
 	}
@@ -445,8 +447,10 @@ bool ALvmxCoreStart(OR_HV_VMX_CORE* core)
 		vmx_vmwrite(VMCS_HOST_FS_BASE, __readmsr(IA32_FS_BASE));
 		vmx_vmwrite(VMCS_HOST_GS_BASE, __readmsr(IA32_GS_BASE));
 		vmx_vmwrite(VMCS_HOST_TR_BASE, ALhvGetSegmentBase(gdtr, ctx.tr));
-		vmx_vmwrite(VMCS_HOST_IDTR_BASE, core->host_idt->flags);
-		vmx_vmwrite(VMCS_HOST_GDTR_BASE, core->host_gdt->flags);
+		ALhvPutLog("%p", (UINT64)gALvmxVCPU->host_idt);
+		ALhvPutLog("%p", (UINT64)gALvmxVCPU->host_gdt);
+		vmx_vmwrite(VMCS_HOST_IDTR_BASE, (UINT64)gALvmxVCPU->host_idt);
+		vmx_vmwrite(VMCS_HOST_GDTR_BASE, (UINT64)gALvmxVCPU->host_gdt);
 
 
 		vmx_vmwrite(VMCS_HOST_SYSENTER_CS, __readmsr(IA32_SYSENTER_CS));
@@ -572,6 +576,7 @@ static void enable_mtrr_exiting(vmx_msr_bitmap* msr_bitmap) {
 }
 bool ALvmxInit(OR_HV_VMX* vcpu)
 {
+	ALhvPutLog("1");
 	{
 		auto bitmap = ALhvMMallocateMemory(0x1000);
 		if (!bitmap)
@@ -585,6 +590,7 @@ bool ALvmxInit(OR_HV_VMX* vcpu)
 
 		enable_mtrr_exiting(vcpu->msr_bitmap.va);
 	}
+	ALhvPutLog("1");
 
 
 	if (!EPT_CLS::init())
@@ -592,11 +598,15 @@ bool ALvmxInit(OR_HV_VMX* vcpu)
 		ALhvAddErr("EPT初始化失败");
 		return 0;
 	}
+	ALhvPutLog("1");
+
 	if (!ALvmxVmexitInit())
 	{
 		ALhvAddErr("vmeixt_handler初始化失败");
 		return 0;
 	}
+	ALhvPutLog("1");
+
 	return 1;
 }
 
@@ -618,6 +628,8 @@ bool ALvmxStart(OR_HV_VMX* vcpu)
 	
 	for (ULONG i = 0; i < vcpu->core_count; i++)
 	{
+		ALhvPutLog("%d", i);
+
 		//切换处理器核心
 		auto status = KeGetProcessorNumberFromIndex(i, &processorNumber);
 		if (!NT_SUCCESS(status)) {
@@ -638,7 +650,6 @@ bool ALvmxStart(OR_HV_VMX* vcpu)
 			ALhvAddErr("%d核心虚拟化失败", i);
 			return 0;
 		}
-
 		//换回原核心
 		KeRevertToUserGroupAffinityThread(&oldAffinity);
 
@@ -662,6 +673,8 @@ bool ALvmxStart(OR_HV_VMX* vcpu)
 
 bool ALvmxIsRoot()
 {
+	if (gALvmxVCPU == 0 || gALvmxVCPU->cores == 0)
+		return 0;
 	auto vcpu = ALvmxGetCurrVcore();
 	if (vcpu)
 		return vcpu->isRoot;

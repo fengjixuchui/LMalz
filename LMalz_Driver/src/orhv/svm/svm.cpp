@@ -54,6 +54,8 @@ bool ALsvmStart(OR_HV_SVM* vcpu)
 
 bool ALsvmIsRoot()
 {
+	if (gALsvmVCPU == 0 || gALsvmVCPU->cores == 0)
+		return 0;
 	auto vcpu = ALsvmGetCurrVcore();
 	if (vcpu)
 		return vcpu->isRoot;
