@@ -28,24 +28,41 @@ xmm3_0                   xmmword	?	  ;c0
 xmm4_0                   xmmword	?	  ;d0
 xmm5_0                   xmmword	?	  ;e0
 xmm6_0                   xmmword	?	  ;f0
-xmm7_0                   xmmword	?	  ;100
-										  
-cr0_0                    qword ?		  ;110
-cr2_0                    qword ?		  ;118
-cr3_0                    qword ?		  ;120
-cr4_0                    qword ?		  ;128
-cr8_0                    qword ?		  ;130
-										  
-dr0_0                    qword ?		  ;138
-dr1_0                    qword ?		  ;140
-dr2_0                    qword ?		  ;148
-dr3_0                    qword ?		  ;150
-dr4_0                    qword ?		  ;158
-dr5_0                    qword ?		  ;160
-dr6_0                    qword ?		  ;168
-dr7_0                    qword ?		  ;170
-										  
-efer_0                   qword ?		  ;178
+xmm7_0                   xmmword	?	  ;100 
+xmm8_0                   xmmword	?	  ;110 
+xmm9_0                   xmmword	?	  ;120 
+xmm10_0                   xmmword	?	  ;130 
+xmm11_0                   xmmword	?	  ;140 
+xmm12_0                   xmmword	?	  ;150 
+xmm13_0                   xmmword	?	  ;160 
+xmm14_0                   xmmword	?	  ;170 
+xmm15_0                   xmmword	?	  ;180 
+cr0_0                    qword ?		  ;110 +80
+cr2_0                    qword ?		  ;118 +80
+cr3_0                    qword ?		  ;120 +80
+cr4_0                    qword ?		  ;128 +80
+cr8_0                    qword ?		  ;130 +80
+dr0_0                    qword ?		  ;138 +80
+dr1_0                    qword ?		  ;140 +80
+dr2_0                    qword ?		  ;148 +80
+dr3_0                    qword ?		  ;150 +80
+dr4_0                    qword ?		  ;158 +80
+dr5_0                    qword ?		  ;160 +80
+dr6_0                    qword ?		  ;168 +80
+dr7_0                    qword ?		  ;170 +80
+efer_0                   qword ?		  ;178 +80
+
+
+
+
+
+
+
+
+
+
+
+
 										  
 OR_HV_VMX_REG ends	  ;180
 

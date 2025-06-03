@@ -101,7 +101,6 @@ bool ALhvInitialization(VCPU* vcpu)
 			return 0;
 		}
 		vcpu->host_cr3 = host_cr3;
-		ALhvPutLog("%p", vcpu->host_cr3);
 	}
 	//获取host_idt
 	{
@@ -112,7 +111,6 @@ bool ALhvInitialization(VCPU* vcpu)
 			return 0;
 		}
 		vcpu->host_idt = host_idt;
-		ALhvPutLog("%p", vcpu->host_idt);
 
 	}
 	//获取HOST_gdt
@@ -124,7 +122,6 @@ bool ALhvInitialization(VCPU* vcpu)
 			return 0;
 		}
 		vcpu->host_gdt = host_gdt;
-		ALhvPutLog("%p", vcpu->host_gdt);
 
 	}
 

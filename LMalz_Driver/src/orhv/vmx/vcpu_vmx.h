@@ -139,14 +139,14 @@ struct OR_HV_VMX_REG
 		unsigned char xmm5[16];
 		unsigned char xmm6[16];
 		unsigned char xmm7[16];
-		// unsigned char xmm8[16];
-		// unsigned char xmm9[16];
-		// unsigned char xmm10[16];
-		// unsigned char xmm11[16];
-		// unsigned char xmm12[16];
-		// unsigned char xmm13[16];
-		// unsigned char xmm14[16];
-		// unsigned char xmm15[16];
+		unsigned char xmm8[16];
+		unsigned char xmm9[16];
+		unsigned char xmm10[16];
+		unsigned char xmm11[16];
+		unsigned char xmm12[16];
+		unsigned char xmm13[16];
+		unsigned char xmm14[16];
+		unsigned char xmm15[16];
 
 		size_t cr0;
 		size_t cr2;
@@ -169,8 +169,8 @@ struct OR_HV_VMX_REG
 
 
 static_assert (offsetof(OR_HV_VMX_REG, rax) == 0, "需要更新vmx.inc");
-static_assert (offsetof(OR_HV_VMX_REG, efer) == 0x178, "需要更新vmx.inc");
-static_assert (sizeof OR_HV_VMX_REG == 0x180, "需要更新vmx.inc");
+static_assert (offsetof(OR_HV_VMX_REG, efer) == 0x178 + 0x80, "需要更新vmx.inc");
+static_assert (sizeof OR_HV_VMX_REG == 0x180 + 0x80, "需要更新vmx.inc");
 
 
 static_assert (offsetof(OR_HV_VMX_REG, xmm0) == 0x90, "需要更新vmx.inc");
@@ -218,7 +218,7 @@ typedef union OR_HV_VMX_CORE_
 	char stack[VMX_HOST_STACK_SIZE];
 }OR_HV_VMX_CORE;
 
-static_assert (offsetof(OR_HV_VMX_CORE_, isRoot) == 0x180, "需要更新vmx.inc");
+static_assert (offsetof(OR_HV_VMX_CORE_, isRoot) == 0x180 + 0x80, "需要更新vmx.inc");
 static_assert (VMX_HOST_STACK_SIZE == 0x10000, "需要更新vmx.inc");
 
 
@@ -239,7 +239,6 @@ typedef struct OR_HV_VMX_
 
 	segment_descriptor_interrupt_gate_64* host_idt;
 	segment_descriptor_32* host_gdt;
-
 
 
 }OR_HV_VMX;

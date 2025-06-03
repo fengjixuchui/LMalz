@@ -1,5 +1,16 @@
-#pragma once
-#include <wdm.h>
+#include <windows.h>
+#include <intrin.h>
+#include <stdio.h>
+#define __R3
+#define _CRT_SECURE_NO_WARNINGS
+
+#include "F:\g_un\ALJT\Code\omri\include\driver\driver.h"
+#include "F:\g_un\ALJT\Code\omri\include\orvm\orvm.h"
+#include "F:\g_un\ALJT\Code\omri\include\debug\debug.h"
+#include "F:\g_un\ALJT\Code\omri\include\memory\memory.h"
+#include "F:\g_un\ALJT\Code\omri\include\PEanalysis\PEanalysis.h"
+#include "F:\g_un\ALJT\Code\omri\include\process\process.h"
+#include "F:\g_un\ALJT\Code\omri\include\resource\omri3\resource.h"
 //禁止超过128
 #define HANDLER_LIMIT 10
 template <typename T>
@@ -141,3 +152,70 @@ public:
 	}
 
 };
+typedef bool(*VMEXIT_HANDLER_T)(int*, bool);
+
+class VMEXIT_HANDLERS_CLS :private HANDLER_CLS<VMEXIT_HANDLER_T>
+{
+	static bool _default(int* vcpu, bool call_2)
+	{
+		if (call_2)		//第二次调用给蓝屏
+		{
+			ALdbgStoput("爆炸");
+			return 1;
+		}
+		else
+			return 0;
+	}
+public:
+	VMEXIT_HANDLERS_CLS(VMEXIT_HANDLER_T m, bool toend = 0)	  //默认置顶处理
+	{
+		add_handler(m, toend);
+	};
+	VMEXIT_HANDLERS_CLS()
+	{
+		add_handler(_default, 1);
+	};
+	bool add_fun(VMEXIT_HANDLER_T m, bool toend = 0)
+	{
+		sub_handler(_default);//尝试删除末位处理程序
+		return add_handler(m, toend);
+	}
+	bool call_all(int* vcpu)		   //调用两次,必须被处理不然就蓝屏
+	{
+		auto hd = call_handlers(vcpu, 0);
+		if (!hd)
+		{
+			hd = call_handlers(vcpu, 1);
+			if (!hd)
+				_default(vcpu, 1);
+		}
+		return 1;
+	}
+
+};
+bool test1(int* a, bool is2)
+{
+	ALdbgPut("test1执行%d", (int)is2);
+	return 0;
+}	  
+bool test2(int* a, bool is2)
+{
+	ALdbgPut("test2执行%d", (int)is2);
+	return 0;
+}		  
+bool test3(int* a, bool is2)
+{
+	ALdbgPut("test3执行%d", (int)is2);
+	return 0;
+}
+
+int main()
+{
+	VMEXIT_HANDLERS_CLS a;
+	a.add_fun(test1);
+	a.add_fun(test2);
+	a.add_fun(test3);
+	a.call_all(0);
+	return 0;
+
+}

@@ -73,14 +73,22 @@ ALvmxHostEnter_asm proc
   mov [rsp + OR_HV_VMX_CORE.reg.r14_0], r14
   mov [rsp + OR_HV_VMX_CORE.reg.r15_0], r15
 
-  ; movaps [rsp - 0xFFF0 + OR_HV_VMX_CORE.reg.xmm0_0], xmm0
-  ; movaps [rsp - 0xFFF0 + OR_HV_VMX_CORE.reg.xmm1_0], xmm1
-  ; movaps [rsp - 0xFFF0 + OR_HV_VMX_CORE.reg.xmm2_0], xmm2
-  ; movaps [rsp - 0xFFF0 + OR_HV_VMX_CORE.reg.xmm3_0], xmm3
-  ; movaps [rsp - 0xFFF0 + OR_HV_VMX_CORE.reg.xmm4_0], xmm4
-  ; movaps [rsp - 0xFFF0 + OR_HV_VMX_CORE.reg.xmm5_0], xmm5
-  ; movaps [rsp - 0xFFF0 + OR_HV_VMX_CORE.reg.xmm6_0], xmm6
-  ; movaps [rsp - 0xFFF0 + OR_HV_VMX_CORE.reg.xmm7_0], xmm7
+    movaps [rsp + OR_HV_VMX_CORE.reg.xmm0_0], xmm0
+    movaps [rsp + OR_HV_VMX_CORE.reg.xmm1_0], xmm1
+    movaps [rsp + OR_HV_VMX_CORE.reg.xmm2_0], xmm2
+    movaps [rsp + OR_HV_VMX_CORE.reg.xmm3_0], xmm3
+    movaps [rsp + OR_HV_VMX_CORE.reg.xmm4_0], xmm4
+    movaps [rsp + OR_HV_VMX_CORE.reg.xmm5_0], xmm5
+    movaps [rsp + OR_HV_VMX_CORE.reg.xmm6_0], xmm6
+    movaps [rsp + OR_HV_VMX_CORE.reg.xmm7_0], xmm7			 
+    movaps [rsp + OR_HV_VMX_CORE.reg.xmm8_0], xmm8
+    movaps [rsp + OR_HV_VMX_CORE.reg.xmm9_0], xmm9
+    movaps [rsp + OR_HV_VMX_CORE.reg.xmm10_0], xmm10
+    movaps [rsp + OR_HV_VMX_CORE.reg.xmm11_0], xmm11
+    movaps [rsp + OR_HV_VMX_CORE.reg.xmm12_0], xmm12
+    movaps [rsp + OR_HV_VMX_CORE.reg.xmm13_0], xmm13
+    movaps [rsp + OR_HV_VMX_CORE.reg.xmm14_0], xmm14
+    movaps [rsp + OR_HV_VMX_CORE.reg.xmm15_0], xmm15
 
   mov rax, 681Ch ; VMX_VMCS_GUEST_RSP
   vmread rax, rax
@@ -121,8 +129,8 @@ ALvmxHostEnter_asm proc
   or rdx,rax
 
   ;设置tsc偏移
-  ;sub rdx,r15
-  ;mov rcx, 2010h ; VMCS_CTRL_TSC_OFFSET
+  sub rdx,r15
+  mov rcx, 2010h ; VMCS_CTRL_TSC_OFFSET
   ;vmwrite rcx, rdx
 
   ;-------------------------------------------------
@@ -158,14 +166,24 @@ ALvmxHostEnter_asm proc
   mov r13, [rsp + OR_HV_VMX_CORE.reg.r13_0]
   mov r14, [rsp + OR_HV_VMX_CORE.reg.r14_0]
   mov r15, [rsp + OR_HV_VMX_CORE.reg.r15_0]
-  ; movaps xmm0, [rsp + OR_HV_VMX_CORE.reg.xmm0]
-  ; movaps xmm1, [rsp + OR_HV_VMX_CORE.reg.xmm1]
-  ; movaps xmm2, [rsp + OR_HV_VMX_CORE.reg.xmm2]
-  ; movaps xmm3, [rsp + OR_HV_VMX_CORE.reg.xmm3]
-  ; movaps xmm4, [rsp + OR_HV_VMX_CORE.reg.xmm4]
-  ; movaps xmm5, [rsp + OR_HV_VMX_CORE.reg.xmm5]
-  ; movaps xmm6, [rsp + OR_HV_VMX_CORE.reg.xmm6]
-  ; movaps xmm7, [rsp + OR_HV_VMX_CORE.reg.xmm7]
+
+   movaps xmm0, [rsp + OR_HV_VMX_CORE.reg.xmm0_0]
+   movaps xmm1, [rsp + OR_HV_VMX_CORE.reg.xmm1_0]
+   movaps xmm2, [rsp + OR_HV_VMX_CORE.reg.xmm2_0]
+   movaps xmm3, [rsp + OR_HV_VMX_CORE.reg.xmm3_0]
+   movaps xmm4, [rsp + OR_HV_VMX_CORE.reg.xmm4_0]
+   movaps xmm5, [rsp + OR_HV_VMX_CORE.reg.xmm5_0]
+   movaps xmm6, [rsp + OR_HV_VMX_CORE.reg.xmm6_0]
+   movaps xmm7, [rsp + OR_HV_VMX_CORE.reg.xmm7_0]  
+   movaps xmm8, [rsp + OR_HV_VMX_CORE.reg.xmm8_0]
+   movaps xmm9, [rsp + OR_HV_VMX_CORE.reg.xmm9_0]
+   movaps xmm10, [rsp + OR_HV_VMX_CORE.reg.xmm10_0]
+   movaps xmm11, [rsp + OR_HV_VMX_CORE.reg.xmm11_0]
+   movaps xmm12, [rsp + OR_HV_VMX_CORE.reg.xmm12_0]
+   movaps xmm13, [rsp + OR_HV_VMX_CORE.reg.xmm13_0]
+   movaps xmm14, [rsp + OR_HV_VMX_CORE.reg.xmm14_0]
+   movaps xmm15, [rsp + OR_HV_VMX_CORE.reg.xmm15_0]
+
   sub [rsp + OR_HV_VMX_CORE.isRoot], 1   ;将该值减一,如果需要退出,那么zf标志位不等于0
   jnz exitVm
 
@@ -219,10 +237,16 @@ ALvmxHostEnter_asm endp
 
 
 
+ALvmxVmcall_asm proc
+vmcall
+ret
+ALvmxVmcall_asm endp
 
 
-
-
+ALvmxInvvpid_asm proc
+  invvpid rcx, oword ptr [rdx]
+  ret
+ALvmxInvvpid_asm endp
 
 
 

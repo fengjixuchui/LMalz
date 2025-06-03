@@ -803,7 +803,7 @@ bool ALhvMMprepare_fake_page_tables(__in cr3 real_cr3, __out pml4e_64** fake_tab
 		return 0;
 	}
 	//ÐÞ¸´×ÔÓ³Éä
-	auto fixselfmap = [guest_pml4, Hostpml4, Hostpml4_pa, real_cr3]()->bool {
+	/*auto fixselfmap = [guest_pml4, Hostpml4, Hostpml4_pa, real_cr3]()->bool {
 		for (int i = 255; i < 512; i++)
 		{
 			if (guest_pml4[i].page_frame_number == real_cr3.address_of_page_directory)
@@ -819,7 +819,7 @@ bool ALhvMMprepare_fake_page_tables(__in cr3 real_cr3, __out pml4e_64** fake_tab
 	{
 		ALhvSetErr("ÐÞ¸´×ÔÓ³ÉäÊ§°Ü");
 		return 0;
-	}
+	}*/
 
 
 

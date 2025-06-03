@@ -3,6 +3,7 @@
 #include "ept.h"
 #include "vmx.inl"
 OR_HV_VMX* gALvmxVCPU = 0;
+extern "C" UINT16 ALvmx_guest_vpid = 1;
 char* ALvmxGetVmcsError()
 {
 	size_t out = 0;
@@ -148,7 +149,7 @@ static bool ALvmxSupported() {
 		return false;
 	}
 
-	_disable();
+	//_disable();
 
 	auto cr0 = __readcr0();
 	auto cr4 = __readcr4();
@@ -171,7 +172,7 @@ static bool ALvmxSupported() {
 	__writecr0(cr0);
 	__writecr4(cr4);
 
-	_enable();
+	//_enable();
 
 	return true;
 }
@@ -222,8 +223,6 @@ bool ALvmxCoreStart(OR_HV_VMX_CORE* core)
 	// 3.24.11.5
 	vmxon->revision_id = vmx_basic.vmcs_revision_id;
 	vmxon->must_be_zero = 0;
-	ALhvPutLog("%p", vmxon.vv);
-	ALhvPutLog("%p", vmxon.pv);
 
 	// 启用虚拟化,进入non-root模式
 	if (__vmx_on(&vmxon.pv)) {
@@ -328,12 +327,17 @@ bool ALvmxCoreStart(OR_HV_VMX_CORE* core)
 		proc_based_ctrl2.flags = 0;
 		proc_based_ctrl2.enable_ept = 1;		//启用EPT
 		{
-			__vmx_vmwrite(VMCS_CTRL_EPT_POINTER, EPT_CLS::getConstEptp().flags);
+			auto v = EPT_CLS::getViceEpt()->getEptp();
+			/*auto v = EPT_CLS::getConstEptp();
+			v.page_frame_number = 123;
+			ALhvPutLog("!!!%p", v.flags);*/
+			__vmx_vmwrite(VMCS_CTRL_EPT_POINTER, v.flags);
 		}
 		proc_based_ctrl2.enable_rdtscp = 1;		//rdtscp指令exit
-		proc_based_ctrl2.enable_vpid = 1;		//启用缓存标识
+		proc_based_ctrl2.enable_vpid = 1;		//启用缓存标识用以躲过mov cr3,0这种傻逼东西 "https://www.unknowncheats.me/forum/anti-cheat-bypass/572387-cr3-trashing.html"
 		{
-			__vmx_vmwrite(VMCS_CTRL_VIRTUAL_PROCESSOR_IDENTIFIER, (UINT64)ALhvGetCurrVcoreIndex() + 1);
+			//因为采用虚拟核心独占物理核心的模式,标识可以相同
+			__vmx_vmwrite(VMCS_CTRL_VIRTUAL_PROCESSOR_IDENTIFIER, ALvmx_guest_vpid);
 		}
 		proc_based_ctrl2.enable_invpcid = 1;	//..
 		proc_based_ctrl2.enable_xsaves = 1;		//..
@@ -447,8 +451,7 @@ bool ALvmxCoreStart(OR_HV_VMX_CORE* core)
 		vmx_vmwrite(VMCS_HOST_FS_BASE, __readmsr(IA32_FS_BASE));
 		vmx_vmwrite(VMCS_HOST_GS_BASE, __readmsr(IA32_GS_BASE));
 		vmx_vmwrite(VMCS_HOST_TR_BASE, ALhvGetSegmentBase(gdtr, ctx.tr));
-		ALhvPutLog("%p", (UINT64)gALvmxVCPU->host_idt);
-		ALhvPutLog("%p", (UINT64)gALvmxVCPU->host_gdt);
+
 		vmx_vmwrite(VMCS_HOST_IDTR_BASE, (UINT64)gALvmxVCPU->host_idt);
 		vmx_vmwrite(VMCS_HOST_GDTR_BASE, (UINT64)gALvmxVCPU->host_gdt);
 
@@ -576,7 +579,6 @@ static void enable_mtrr_exiting(vmx_msr_bitmap* msr_bitmap) {
 }
 bool ALvmxInit(OR_HV_VMX* vcpu)
 {
-	ALhvPutLog("1");
 	{
 		auto bitmap = ALhvMMallocateMemory(0x1000);
 		if (!bitmap)
@@ -590,7 +592,6 @@ bool ALvmxInit(OR_HV_VMX* vcpu)
 
 		enable_mtrr_exiting(vcpu->msr_bitmap.va);
 	}
-	ALhvPutLog("1");
 
 
 	if (!EPT_CLS::init())
@@ -598,14 +599,12 @@ bool ALvmxInit(OR_HV_VMX* vcpu)
 		ALhvAddErr("EPT初始化失败");
 		return 0;
 	}
-	ALhvPutLog("1");
 
 	if (!ALvmxVmexitInit())
 	{
 		ALhvAddErr("vmeixt_handler初始化失败");
 		return 0;
 	}
-	ALhvPutLog("1");
 
 	return 1;
 }
@@ -628,7 +627,6 @@ bool ALvmxStart(OR_HV_VMX* vcpu)
 	
 	for (ULONG i = 0; i < vcpu->core_count; i++)
 	{
-		ALhvPutLog("%d", i);
 
 		//切换处理器核心
 		auto status = KeGetProcessorNumberFromIndex(i, &processorNumber);

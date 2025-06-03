@@ -414,10 +414,9 @@ bool ALvmxVmexitInit()
 
 	return 1;
 }
-
+void test();
 extern "C" void ALvmxExitHandler(OR_HV_VMX_CORE * vcpu)
 {
-
 	vmx_vmexit_reason reason;
 	reason.flags = static_cast<uint32_t>(vmx_vmread(VMCS_EXIT_REASON));
 
