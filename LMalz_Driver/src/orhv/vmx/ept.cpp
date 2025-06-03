@@ -5,12 +5,11 @@
 #include "ept.h"
 OR_PTR<ept_pml4e> EPT_CLS::const_ept = {};
 ept_pointer EPT_CLS::const_eptp_value = {};
-
-
-// 0 root, 1 pml4e(512GB), 2 pdpte(1GB), 3 pde(2MB), 4 pte(4KB)
-static UINT64 ALvmxEPTgetPageTableInfo(UINT64 GPA, int layerNumber, ept_pml4e* ept)
+// 0 null, 1 pml4e(512GB), 2 pdpte(1GB), 3 pde(2MB), 4 pte(4KB)
+static PUINT64 ALvmxEPTpageTableInfo(UINT64 GPA, int layerNumber, ept_pml4e* ept)
 {
-	if (layerNumber > 4)
+
+	if (layerNumber > 4 || layerNumber < 1)
 	{
 		ALhvSetErr("无效 参数");
 		return 0;
@@ -18,23 +17,21 @@ static UINT64 ALvmxEPTgetPageTableInfo(UINT64 GPA, int layerNumber, ept_pml4e* e
 	OR_ADDRESS addIndex = { 0 };   addIndex.value = GPA;
 	if (ept)
 	{
-		if (layerNumber == 0)
-			return (UINT64)ept;
 		ept_pml4e& pml4e = ept[addIndex.pml4_index];
 		if (pml4e.page_frame_number)
 		{
 			if (layerNumber == 1)
-				return pml4e.flags;
+				return &pml4e.flags;
 			auto pdpte = (ept_pml4e*)ALhvMMgetVA((pml4e.page_frame_number << 12));
 			pdpte += addIndex.pdpt_index;
 			if (layerNumber == 2)
-				return pdpte->flags;
+				return &pdpte->flags;
 			if (pdpte->page_frame_number)
 			{
 				auto pPde = (ept_pde_2mb*)ALhvMMgetVA((pdpte->page_frame_number << 12));
 				pPde += addIndex.pd_index;
 				if (layerNumber == 3)
-					return pPde->flags;
+					return &pPde->flags;
 				if (pPde->large_page)
 					return 0;
 				ept_pde pde = { 0 }; pde.flags = pPde->flags;
@@ -44,7 +41,7 @@ static UINT64 ALvmxEPTgetPageTableInfo(UINT64 GPA, int layerNumber, ept_pml4e* e
 					//ALvmMMsaveSelfMapPte(save);
 					auto pPte = (ept_pte*)ALhvMMgetVA((pde.page_frame_number << 12));
 					pPte += addIndex.pt_index;
-					return pPte->flags;
+					return &pPte->flags;
 				}
 				else
 				{
@@ -69,79 +66,29 @@ static UINT64 ALvmxEPTgetPageTableInfo(UINT64 GPA, int layerNumber, ept_pml4e* e
 		ALhvSetErr("not have ept root");
 		return 0;
 	}
+
+}
+
+// 0 null, 1 pml4e(512GB), 2 pdpte(1GB), 3 pde(2MB), 4 pte(4KB)
+ UINT64 ALvmxEPTgetPageTableInfo(UINT64 GPA, int layerNumber, ept_pml4e* ept)
+{
+	auto r = ALvmxEPTpageTableInfo(GPA, layerNumber, ept);
+	if (r)
+		return *r;
+	else
+		return 0;
 }		   
 // 0 null, 1 pml4e(512GB), 2 pdpte(1GB), 3 pde(2MB), 4 pte(4KB)
 static bool ALvmxEPTsetPageTableInfo(UINT64 GPA, int layerNumber, UINT64 v, ept_pml4e* ept)
 {
-	if (layerNumber > 4)
+	auto r = ALvmxEPTpageTableInfo(GPA, layerNumber, ept);
+	if (r)
 	{
-		ALhvSetErr("无效 参数");
-		return 0;
-	}
-	OR_ADDRESS addIndex = { 0 };   addIndex.value = GPA;
-	if (ept)
-	{
-		if (layerNumber == 0)
-			return 0;
-		ept_pml4e& pml4e = ept[addIndex.pml4_index];
-		if (pml4e.page_frame_number)
-		{
-			if (layerNumber == 1)
-			{
-				pml4e.flags = v;
-				return 1;
-			}
-			auto pdpte = (ept_pml4e*)ALhvMMgetVA((pml4e.page_frame_number << 12));
-			pdpte += addIndex.pdpt_index;
-			if (layerNumber == 2)
-			{
-				pdpte->flags = v;
-				return 1;
-			}
-			if (pdpte->page_frame_number)
-			{
-				auto pPde = (ept_pde_2mb*)ALhvMMgetVA((pdpte->page_frame_number << 12));
-				pPde += addIndex.pd_index;
-				if (layerNumber == 3)
-				{
-					pPde->flags = v;
-					return	1;
-				}
-				if (pPde->large_page)
-					return 0;
-				ept_pde pde = { 0 }; pde.flags = pPde->flags;
-				if (pde.page_frame_number)
-				{
-					//static auto save = ALvmMMallocateMemory(0x1000);
-					//ALvmMMsaveSelfMapPte(save);
-					auto pPte = (ept_pte*)ALhvMMgetVA((pde.page_frame_number << 12));
-					pPte += addIndex.pt_index;
-					pPte->flags = v;
-					return	1;
-				}
-				else
-				{
-					ALhvSetErr("无效 pde");
-					return 0;
-				}
-			}
-			else
-			{
-				ALhvSetErr("无效 pdpte");
-				return 0;
-			}
-		}
-		else
-		{
-			ALhvSetErr("无效 pml4e");
-			return 0;
-		}
+		*r = v;
+		return 1;
 	}
 	else
-	{
-		ALhvSetErr("not have ept root");
 		return 0;
-	}
 }
 static UINT64 ALvmxEPTbuildPDE(UINT64 GPA, ept_pte pte_demo)
 {
@@ -440,7 +387,13 @@ ept_pointer EPT_CLS::getConstEptp()
 		return {};
 	}
 }
+EPT_CLS* EPT_CLS::getViceEpt()
+{
+	static EPT_CLS vice_ept(0);
 
+	return &vice_ept;
+
+}
 
 
 //返回构建的页表项
@@ -468,13 +421,13 @@ static UINT64 clone_page_table(UINT64 GPA, int layerNumber, ept_pml4e* ept)
 	if (layerNumber == 1)
 	{
 		va = ALhvMMgetVA(te.cur_e.page_frame_number << 12);
-		te.cur_e.page_frame_number = new_pg_tb_pa;
+		te.cur_e.page_frame_number = new_pg_tb_pa>>12;
 
 	}
 	else if (layerNumber == 2)
 	{
 		va = ALhvMMgetVA(te.cur_e2.page_frame_number << 12);
-		te.cur_e2.page_frame_number = new_pg_tb_pa;
+		te.cur_e2.page_frame_number = new_pg_tb_pa>>12;
 	}
 	else if (layerNumber == 3)
 	{
@@ -484,7 +437,7 @@ static UINT64 clone_page_table(UINT64 GPA, int layerNumber, ept_pml4e* ept)
 			return 0;
 		}
 		va = ALhvMMgetVA(te.cur_e3.page_frame_number << 12);
-		te.cur_e3.page_frame_number = new_pg_tb_pa;
+		te.cur_e3.page_frame_number = new_pg_tb_pa >> 12;
 	}
 	if (!new_pg_tb)
 	{
@@ -519,26 +472,8 @@ static ept_pdpte* clone_pdpt(ept_pml4e* ept, UINT64 start_GPA)
 
 	return pdpt_p;
 }
-
-EPT_CLS::EPT_CLS()
+EPT_CLS::EPT_CLS() :EPT_CLS((EPT_CLS*)0)
 {
-	this->ept_pml4 = {};
-	this->eptp_v = {};
-	auto o_eptp = this;
-	if (!const_eptp_value.flags)
-	{
-		ALhvSetErr("ept未初始化");
-		return;
-	}
-	auto new_t_m = (ept_pml4e*)ALhvMMallocateMemory(0x1000);
-	for (int i = 0; i < 0x1000 / 8; i++)
-	{
-		new_t_m->flags = const_ept->flags;
-	}
-	o_eptp->ept_pml4.vv = (UINT64)new_t_m;
-	o_eptp->ept_pml4.pv = ALhvMMgetPA(new_t_m);
-	o_eptp->eptp_v = o_eptp->const_eptp_value;
-	o_eptp->eptp_v.page_frame_number = o_eptp->ept_pml4.pv >> 12;
 	return;
 }
 EPT_CLS::EPT_CLS(__in bool _1gb_R, __in bool _1gb_W, __in bool _1gb_X) :EPT_CLS()
@@ -555,6 +490,33 @@ EPT_CLS::EPT_CLS(__in bool _1gb_R, __in bool _1gb_W, __in bool _1gb_X) :EPT_CLS(
 
 	this->ept_pml4->page_frame_number = pa >> 12;		  //修改pml4第一个项(0-512GB)
 }
+EPT_CLS::EPT_CLS(EPT_CLS* clone)
+{
+	this->ept_pml4 = {};
+	this->eptp_v = {};
+	this->clone = clone;
+	auto o_eptp = this;
+	if (!const_eptp_value.flags)
+	{
+		ALhvSetErr("ept未初始化");
+		return;
+	}
+	OR_PTR<ept_pml4e>* target = {};
+	if (clone == 0)
+		target = &const_ept;
+	else
+		target = &clone->ept_pml4;
+	auto new_t_m = (ept_pml4e*)ALhvMMallocateMemory(0x1000);
+	for (int i = 0; i < 0x1000 / 8; i++)
+	{
+		new_t_m[i].flags = target->va[i].flags;
+	}
+	o_eptp->ept_pml4.vv = (UINT64)new_t_m;
+	o_eptp->ept_pml4.pv = ALhvMMgetPA(new_t_m);
+	o_eptp->eptp_v = o_eptp->const_eptp_value;
+	o_eptp->eptp_v.page_frame_number = o_eptp->ept_pml4.pv >> 12;
+	return;
+}
 ept_pointer EPT_CLS::getEptp()
 {
 	return this->eptp_v;
@@ -563,13 +525,14 @@ OR_PTR<ept_pml4e> EPT_CLS::getPml4e()
 {
 	return this->ept_pml4;
 }
-int EPT_CLS::need_remap(UINT64 GPA, __out UINT64* pt_v)
+int EPT_CLS::need_remap(EPT_CLS* target_obj, UINT64 GPA, __out UINT64* pt_v)
 {
 	*pt_v = 0;
+	OR_PTR<ept_pml4e>& target = target_obj == 0 ? const_ept : target_obj->ept_pml4;
 	ept_pml4e cur_e = { 0 };
 	ept_pml4e cons_e = { 0 };
 	cur_e.flags = ALvmxEPTgetPageTableInfo(GPA, 1, this->ept_pml4.va);
-	cons_e.flags = ALvmxEPTgetPageTableInfo(GPA, 1, const_ept.va);
+	cons_e.flags = ALvmxEPTgetPageTableInfo(GPA, 1, target.va);
 	if (cur_e.page_frame_number == cons_e.page_frame_number)
 	{
 		*pt_v = cur_e.flags;
@@ -581,7 +544,7 @@ int EPT_CLS::need_remap(UINT64 GPA, __out UINT64* pt_v)
 		ept_pdpte cur_e1 = { 0 };
 		ept_pdpte cons_e1 = { 0 };
 		cur_e1.flags = ALvmxEPTgetPageTableInfo(GPA, 2, this->ept_pml4.va);
-		cons_e1.flags = ALvmxEPTgetPageTableInfo(GPA, 2, const_ept.va);
+		cons_e1.flags = ALvmxEPTgetPageTableInfo(GPA, 2, target.va);
 		if (cur_e1.page_frame_number == cons_e1.page_frame_number)
 		{
 			*pt_v = cur_e1.flags;
@@ -591,8 +554,8 @@ int EPT_CLS::need_remap(UINT64 GPA, __out UINT64* pt_v)
 		{
 			ept_pde_2mb cons_e_2m = { 0 };
 			ept_pde_2mb cur_e_2m = { 0 };
-			cons_e_2m.flags = ALvmxEPTgetPageTableInfo(GPA, 3, const_ept.va);
 			cur_e_2m.flags = ALvmxEPTgetPageTableInfo(GPA, 3, this->ept_pml4.va);
+			cons_e_2m.flags = ALvmxEPTgetPageTableInfo(GPA, 3, target.va);
 			if (cons_e_2m.large_page || cur_e_2m.large_page) //终项
 				return 0;
 			ept_pde cons_e2 = { 0 };
@@ -610,9 +573,23 @@ int EPT_CLS::need_remap(UINT64 GPA, __out UINT64* pt_v)
 		}
 	}
 }
+int EPT_CLS::need_remap(UINT64 GPA, __out UINT64* pt_v)
+{
+	for (EPT_CLS* i = this->clone;;)
+	{
+		auto ret = need_remap(i, GPA, pt_v);
+		if (ret || i == 0)	//如果需要重新构建路径或者克隆已到达终项
+			return ret;
+		else
+			i = i->clone;
+	}		
+}
+//#pragma warning(disable:4702)
 
 bool EPT_CLS::set_pte(UINT64 GPA, ept_pte pte)
 {
+	//return ALvmxEPTsetPTE(GPA, pte.flags, this->ept_pml4.va);
+
 	UINT64 pt_v = 0;
 	auto n_p = need_remap(GPA, &pt_v);
 	if (!n_p)	  //如果不需要重新映射
@@ -682,16 +659,88 @@ bool EPT_CLS::set_pte(UINT64 GPA, bool _r, bool _w, bool _x)
 {
 	ept_pte pte = { 0 };
 	this->get_pte(GPA, &pte);
+	if (pte.flags == 0)
+	{
+		pte.page_frame_number = GPA >> 12;
+		pte.memory_type = ALhvMMgetMemoryType(GPA, 0x1000, 0);
+	}
 	pte.read_access = _r;
 	pte.write_access = _w;
 	pte.execute_access = _x;
+	
 	return set_pte(GPA, pte);
 }
 
-bool EPT_CLS::get_pte(UINT64 GPA, ept_pte* pte)
+bool EPT_CLS::get_pml4e(UINT64 GPA, ept_pml4e* e)
+{
+	auto r = ALvmxEPTgetPageTableInfo(GPA, 1, this->ept_pml4.va);
+	e->flags = r;
+	return r != 0;
+}
+bool EPT_CLS::get_pdpte(UINT64 GPA, ept_pdpte* e)
+{
+	auto r = ALvmxEPTgetPageTableInfo(GPA, 2, this->ept_pml4.va);
+	e->flags = r;
+	return r != 0;
+}
+bool EPT_CLS::get_pde(UINT64 GPA, ept_pde* e)
+{
+	auto r = ALvmxEPTgetPageTableInfo(GPA, 3, this->ept_pml4.va);
+	e->flags = r;
+	return r != 0;
+}
+bool EPT_CLS::get_pte(UINT64 GPA, ept_pte* e)
 {
 	auto r = ALvmxEPTgetPageTableInfo(GPA, 4, this->ept_pml4.va);
-	pte->flags = r;
+	e->flags = r;
 	return r != 0;
+}	  
+
+ept_pml4e EPT_CLS::get_pml4e(UINT64 GPA)
+{
+	ept_pml4e r = {};
+	r.flags	 = ALvmxEPTgetPageTableInfo(GPA, 1, this->ept_pml4.va);
+	return r;
+}
+ept_pdpte EPT_CLS::get_pdpte(UINT64 GPA )
+{
+	ept_pdpte r = {};
+	r.flags = ALvmxEPTgetPageTableInfo(GPA, 2, this->ept_pml4.va);
+	return r;
+}
+ept_pde EPT_CLS::get_pde(UINT64 GPA )
+{
+	ept_pde r = {};
+	r.flags = ALvmxEPTgetPageTableInfo(GPA, 3, this->ept_pml4.va);
+	return r;
+}
+ept_pte EPT_CLS::get_pte(UINT64 GPA )
+{
+	ept_pte r = {};
+	r.flags = ALvmxEPTgetPageTableInfo(GPA, 4, this->ept_pml4.va);
+	return r;
+}
+
+
+
+
+
+ept_pte* EPT_CLS::pte(UINT64 GPA)
+{
+	return (ept_pte*)ALvmxEPTpageTableInfo(GPA, 4, this->ept_pml4.va);
+}
+ept_pde* EPT_CLS::pde(UINT64 GPA)
+{
+	return (ept_pde*)ALvmxEPTpageTableInfo(GPA, 3, this->ept_pml4.va);
+
+}
+ept_pdpte* EPT_CLS::pdpte(UINT64 GPA)
+{
+	return (ept_pdpte*)ALvmxEPTpageTableInfo(GPA, 2, this->ept_pml4.va);
+
+}
+ept_pml4e* EPT_CLS::pml4e(UINT64 GPA)
+{
+	return (ept_pml4e*)ALvmxEPTpageTableInfo(GPA, 1, this->ept_pml4.va);
 }
 

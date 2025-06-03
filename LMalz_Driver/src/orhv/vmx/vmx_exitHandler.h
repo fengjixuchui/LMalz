@@ -25,11 +25,11 @@ public:
 	};
 	VMEXIT_HANDLERS_CLS()
 	{
-		add_handler(_default, 1);
+		//add_handler(_default, 1);
 	};
 	bool add_fun(VMEXIT_HANDLER_T m, bool toend = 0)
 	{
-		sub_handler(_default);//尝试删除末位处理程序
+		//sub_handler(_default);//尝试删除末位处理程序
 		return add_handler(m, toend);
 	}
 	bool call_all(OR_HV_VMX_CORE* vcpu)		   //调用两次,必须被处理不然就蓝屏

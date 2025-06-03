@@ -301,4 +301,12 @@ inline void disable_monitor_trap_flag() {
 inline void set_ept(ept_pointer v)
 {
 	__vmx_vmwrite(VMCS_CTRL_EPT_POINTER, v.flags);
+	ALvmxInvept_asm(invept_all_context, {});
+}		 
+inline ept_pointer get_ept()
+{
+	ept_pointer ret = {};
+	ret.flags = vmx_vmread(VMCS_CTRL_EPT_POINTER);
+	return ret;
 }
+inline void vmx_increment_rip(OR_HV_VMX_CORE* vcpu);
