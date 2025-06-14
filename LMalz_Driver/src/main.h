@@ -59,3 +59,12 @@ NTSTATUS ALmemCopyData(PVOID desAdd, PVOID souAdd, UINT64 size);
 #define MiGetPpeAddress(BASE, VA) ((UINT64)(((((UINT64)VA & 0xFFFFFFFFFFFF) >> 30) << 3) + BASE))
 #define MiGetPdeAddress(BASE, VA) ((UINT64)(((((UINT64)VA & 0xFFFFFFFFFFFF) >> 21) << 3) + BASE))
 #define MiGetPteAddress(BASE, VA) ((UINT64)(((((UINT64)VA & 0xFFFFFFFFFFFF) >> 12) << 3) + BASE))
+
+
+// errput.cpp
+char* _ErrSetString(const char* format, ...);
+char* _ErrAddString(const char* format, ...);
+char* _ErrGetString();
+#define ALdbgSetErr(a,...) _ErrSetString( __FUNCTION__ "(%d):\t" a,__LINE__, __VA_ARGS__)
+#define ALdbgAddErr(a,...) _ErrAddString(" FROM:" __FUNCTION__ "(%d):\t" a,__LINE__, __VA_ARGS__)
+#define ALdbgGetErr() _ErrGetString()

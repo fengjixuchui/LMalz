@@ -28,7 +28,7 @@
 //--------------------
 extern "C" void _sgdt(segment_descriptor_register_64* gdtr);
 extern "C" void _lgdt(segment_descriptor_register_64* gdtr);
-//errput.cpp
+//hverrput.cpp
 char* _hvErrSetString(const char* format, ...);
 char* _hvErrAddString(const char* format, ...);
 char* _hvErrGetString();
@@ -58,7 +58,7 @@ uint64_t ALhvGetSegmentBase(
 	segment_selector const selector);
 
 
-
+cr3 ALhvGetGuestCr3();
 
 
 
@@ -88,6 +88,10 @@ bool ALhvMMprepare_fake_page_tables(__in cr3 real_cr3, __out pml4e_64** fake_tab
 bool ALhvMMgetHostCr3(__in cr3 system_cr3, __out cr3* host_cr3_out);
 
 UINT8 ALhvMMgetMemoryType(UINT64 address, UINT64 size, bool update = 0);
+
+bool ALhvMMreadGuestMemroy(PVOID buff, PVOID add, UINT64 size);
+
+
 
 //----------------------------hvasm.asm
 extern "C" UINT64 ALhvGetContext_asm(ORVM_CONTEXT_t*);

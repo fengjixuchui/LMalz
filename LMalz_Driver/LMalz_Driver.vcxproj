@@ -128,7 +128,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
-    <IncludePath>$(SolutionDir)extern\ia32-doc\out;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)extern\ia32-doc\out;$(SolutionDir)extern\Zydis;$(SolutionDir)extern;$(IncludePath)</IncludePath>
     <EnableInf2cat>false</EnableInf2cat>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">
@@ -146,7 +146,8 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
       <LanguageStandard>Default</LanguageStandard>
-      <Optimization>Disabled</Optimization>
+      <Optimization>Full</Optimization>
+      <PreprocessorDefinitions>__R0;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <EntryPointSymbol>main</EntryPointSymbol>
@@ -159,9 +160,13 @@
     <FilesToPackage Include="$(TargetPath)" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\disassemble.cpp" />
+    <ClCompile Include="src\errput.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\memory.cpp" />
-    <ClCompile Include="src\orhv\errput.cpp" />
+    <ClCompile Include="src\Buffer.cpp" />
+    <ClCompile Include="src\monitor_handlers.cpp" />
+    <ClCompile Include="src\orhv\hverrput.cpp" />
     <ClCompile Include="src\orhv\gdt.cpp" />
     <ClCompile Include="src\orhv\hvmem.cpp" />
     <ClCompile Include="src\orhv\idt.cpp" />
@@ -169,14 +174,18 @@
     <ClCompile Include="src\orhv\orhv_bf.cpp" />
     <ClCompile Include="src\orhv\svm\svm.cpp" />
     <ClCompile Include="src\orhv\vmx\ept.cpp" />
-    <ClCompile Include="src\orhv\vmx\mods\monitor.cpp" />
+    <ClCompile Include="src\orhv\vmx\mods\vmx_monitor.cpp" />
     <ClCompile Include="src\orhv\vmx\mods\R_X_isolate.cpp" />
     <ClCompile Include="src\orhv\vmx\vmx.cpp" />
     <ClCompile Include="src\orhv\vmx\vmx_exitHandler.cpp" />
+    <ClCompile Include="src\send.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\Buffer.h" />
     <ClInclude Include="src\dbgput.h" />
+    <ClInclude Include="src\disassemble.h" />
     <ClInclude Include="src\main.h" />
+    <ClInclude Include="src\monitor_handlers.h" />
     <ClInclude Include="src\orhv\common.h" />
     <ClInclude Include="src\orhv\handler_class.h" />
     <ClInclude Include="src\orhv\idt.h" />
@@ -187,9 +196,12 @@
     <ClInclude Include="src\orhv\vcpu.h" />
     <ClInclude Include="src\orhv\vcpu_bf.h" />
     <ClInclude Include="src\orhv\vmx\ept.h" />
+    <ClInclude Include="src\orhv\vmx\mods\vmx_monitor.h" />
     <ClInclude Include="src\orhv\vmx\vcpu_vmx.h" />
     <ClInclude Include="src\orhv\vmx\vmx.h" />
     <ClInclude Include="src\orhv\vmx\vmx_exitHandler.h" />
+    <ClInclude Include="src\send.h" />
+    <ClInclude Include="src\send_type.h" />
   </ItemGroup>
   <ItemGroup>
     <MASM Include="src\orhv\hvasm.asm" />
@@ -199,6 +211,10 @@
   <ItemGroup>
     <None Include="src\orhv\vmx\vmx.inc" />
     <None Include="src\orhv\vmx\vmx.inl" />
+  </ItemGroup>
+  <ItemGroup>
+    <Library Include="..\extern\Zydis\Zycore.lib" />
+    <Library Include="..\extern\Zydis\Zydis.lib" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

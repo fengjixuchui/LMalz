@@ -360,6 +360,29 @@ PVOID ALhvMMgetVA(UINT64 pa)
 		return GetVA(pa);
 	}
 }
+UINT64 ALhvMMgetPA(PVOID add, cr3 cr3_)
+{
+	auto cr3_va = (pml4e_64*)ALhvMMgetVA(cr3_.address_of_page_directory << 12);
+	auto pde = ALhvMMgetPDE(cr3_va, add);
+	if (!pde.present)
+		return 0;
+	if (pde.large_page)
+	{
+		pde_2mb_64 pde_2m = { 0 };
+		pde_2m.flags = pde.flags;
+		return (pde_2m.page_frame_number << 21) + ((UINT64)add & 0x1fffff);
+	}
+	else
+	{
+		auto pte = ALhvMMgetPTE(cr3_va, add);
+		if (!pte.present)
+			return 0;
+		else
+		{
+			return (pte.page_frame_number << 12) + _Gpg_off(add);
+		}
+	}
+}
 UINT64 ALhvMMgetPA(PVOID add)
 {
 	if ((UINT64)add >= (UINT64)g_hvMMpool && (UINT64)add < (UINT64)g_hvMMpool + g_hvMMpoolSize)
@@ -368,26 +391,7 @@ UINT64 ALhvMMgetPA(PVOID add)
 	{
 		cr3 cr3_v = { 0 };
 		cr3_v.flags = __readcr3();
-		auto cr3_va = (pml4e_64*)ALhvMMgetVA(cr3_v.address_of_page_directory << 12);
-		auto pde = ALhvMMgetPDE(cr3_va, add);
-		if (!pde.present)
-			return 0;
-		if (pde.large_page)
-		{
-			pde_2mb_64 pde_2m = { 0 };
-			pde_2m.flags = pde.flags;
-			return (pde_2m.page_frame_number << 21) + ((UINT64)add & 0x1fffff);
-		}
-		else
-		{
-			auto pte = ALhvMMgetPTE(cr3_va, add);
-			if(!pte.present)
-				return 0;
-			else
-			{
-				return (pte.page_frame_number << 12) + _Gpg_off(add);
-			}
-		}
+		return ALhvMMgetPA(add, cr3_v);
 	}
 	else
 	{
@@ -1036,6 +1040,96 @@ UINT8 ALhvMMgetMemoryType(UINT64 address, UINT64 size, bool update)
 	/*if (address < MB_TO_BYTE(1))
 		return MEMORY_TYPE_UNCACHEABLE;*/
 	return calc_mtrr_mem_type(mtrrs, address, size);
+}
+
+static bool ALhvMMaccessMemoryFromPM(PVOID buff, PVOID va, UINT64 size, cr3 cr3_, bool iswrite)
+{
+	if (size == 0) return true; // 处理size=0的情况
+
+	auto call = iswrite ? ALhvMMwritePM : ALhvMMreadPM;
+	UINT64 va64 = (UINT64)va & ~0xFFFULL;
+	UINT64 va_off = (UINT64)va & 0xFFF;
+	UINT64 end = (UINT64)va + size;
+	UINT64 end_64 = end & ~0xFFFULL;
+	UINT64 end_off = end & 0xFFF;
+
+	// 单页情况
+	if (va_off + size <= 0x1000) {
+		UINT64 pa = ALhvMMgetPA((PVOID)va64, cr3_);
+		if (!pa) {
+			ALhvSetErr("获取物理地址失败");
+			return false;
+		}
+		return call(pa + va_off, buff, size);
+	}
+	// 多页情况
+	else {
+		// 处理第一页（部分）
+		UINT64 firstPa = ALhvMMgetPA((PVOID)va64, cr3_);
+		if (!firstPa)
+		{
+			ALhvSetErr("获取物理地址失败");
+			return false;
+		}
+		UINT64 firstSize = 0x1000 - va_off;
+		if (!call(firstPa + va_off, buff, firstSize)) {
+			return false;
+		}
+
+		// 处理完整中间页
+		UINT64 buffOffset = firstSize; // 已处理的数据量
+		for (UINT64 cur = va64 + 0x1000; cur < end_64; cur += 0x1000) {
+			UINT64 pa = ALhvMMgetPA((PVOID)cur, cr3_);
+			if (!pa) {
+				ALhvSetErr("获取物理地址失败");
+				return false;
+			}
+			if (!call(pa, (PVOID)((UINT64)buff + buffOffset), 0x1000)) {
+				return false;
+			}
+			buffOffset += 0x1000;
+		}
+
+		// 处理末尾页（部分）
+		if (end_off > 0) {
+			UINT64 lastPa = ALhvMMgetPA((PVOID)end_64, cr3_);
+			if (!lastPa) {
+				ALhvSetErr("获取物理地址失败");
+				return false;
+			}
+			if (!call(lastPa, (PVOID)((UINT64)buff + buffOffset), end_off)) {
+				return false;
+			}
+		}
+		return true;
+	}
+}
+
+bool ALhvMMreadVAfromPM(PVOID buff, PVOID va, UINT64 size, cr3 cr3_)
+{
+	return ALhvMMaccessMemoryFromPM(buff, va, size, cr3_, 0);
+}
+bool ALhvMMwriteVAfromPM(PVOID buff, PVOID va, UINT64 size, cr3 cr3_)
+{
+	return ALhvMMaccessMemoryFromPM(buff, va, size, cr3_, 1);
+}
+
+
+bool ALhvMMreadGuestMemroy(PVOID buff, PVOID add, UINT64 size)
+{
+	//if (((UINT64)buff & (1ULL << 47)) && ((UINT64)add & (1ULL << 47)))	 //如果都是高位内存,先尝试直接复制(废弃,可能出错)
+	//{
+	//	auto r = ALhvIDTsafeCopy(buff, add, size);
+	//	if (r)
+	//		return 1;
+	//}
+	auto g_cr3 = ALhvGetGuestCr3();
+	if (g_cr3.flags == 0)
+	{
+		ALhvSetErr("获取guestcr3失败");
+		return 0;
+	}
+	return ALhvMMreadVAfromPM(buff, add, size, g_cr3);
 }
 
 

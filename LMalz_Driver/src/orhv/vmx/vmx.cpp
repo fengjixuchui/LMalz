@@ -707,3 +707,10 @@ OR_HV_VMX_CORE* ALvmxGetCurrVcore()
 //	return KeGetCurrentProcessorIndex();
 //}
 
+cr3 ALvmxGetGuestCr3()
+{
+	cr3 r = {};
+	r.flags = vmx_vmread(VMCS_GUEST_CR3);
+	return r;
+}
+

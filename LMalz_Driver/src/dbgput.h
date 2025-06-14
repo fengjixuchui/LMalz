@@ -1,5 +1,4 @@
 #pragma once
-#define __R0
 #ifndef __NDBG
 #define __DBG
 #endif // !__NDBG

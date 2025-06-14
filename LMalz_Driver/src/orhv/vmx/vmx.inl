@@ -257,6 +257,15 @@ inline bool inject_hw_exception(uint32_t const vector, uint32_t const error = 0)
 	__vmx_vmwrite(VMCS_CTRL_VMENTRY_INTERRUPTION_INFORMATION_FIELD, interrupt_info.flags);
 	return 1;
 }
+inline void inject_mtf()
+{
+	vmentry_interrupt_information interrupt_info = { 0 };
+	interrupt_info.vector = 0;
+	interrupt_info.interruption_type = other_event;
+	interrupt_info.valid = 1;
+	__vmx_vmwrite(VMCS_CTRL_VMENTRY_INTERRUPTION_INFORMATION_FIELD, interrupt_info.flags);
+	__vmx_vmwrite(VMCS_CTRL_VMENTRY_EXCEPTION_ERROR_CODE, 0);
+}
 
 // enable/disable vm-exits when the guest tries to read the specified MSR
 inline void enable_exit_for_msr_read(vmx_msr_bitmap& bitmap,
@@ -301,7 +310,6 @@ inline void disable_monitor_trap_flag() {
 inline void set_ept(ept_pointer v)
 {
 	__vmx_vmwrite(VMCS_CTRL_EPT_POINTER, v.flags);
-	ALvmxInvept_asm(invept_all_context, {});
 }		 
 inline ept_pointer get_ept()
 {
