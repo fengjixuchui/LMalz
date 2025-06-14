@@ -24,10 +24,19 @@
     <ClCompile Include="handler_test.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="buffer_test.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\LMalz_Driver\src\Buffer.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resource.h">
       <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\LMalz_Driver\src\Buffer.h">
+      <Filter>源文件</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

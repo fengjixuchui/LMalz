@@ -6,9 +6,9 @@
 extern OR_HV_VMX* gALvmxVCPU;
 bool ALvmxStart(OR_HV_VMX* vcpu);	  //vmx 开始
 
-
 bool ALvmxIsRoot();//当前环境是否为host模式
 
+cr3 ALvmxGetGuestCr3();
 
 OR_HV_VMX_CORE* ALvmxGetCurrVcore();  //获取当前虚拟CPU结构体	  如果未初始化则为0
 

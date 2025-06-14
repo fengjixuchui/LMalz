@@ -1,6 +1,7 @@
 #include "..\ept.h"
 #include "..\vmx.inl"
 #include "..\vmx_exitHandler.h"
+#include "vmx_monitor.h"
 /*
 *  三页表设计，其一全属性，重映射自身模块物理内存，使自身模块在guest层面为0，
 *  其二全局全属性目标缺属性用于触发违例，可在此页表再次重映射自身某段用于guest执行，
@@ -9,40 +10,73 @@
 *  注:用于进程内存执行控制时需结合写时复制重映射模块内存，防止影响其他进程
 */
 static EPT_CLS* g_target_X_ept = 0;
+static MONITOR_CALLBACK g_callback = 0;
+
+struct MNT_INFO
+{
+	UINT64 mtf_add;//最后一个MTF的RIP地址
+};
+
+static MNT_INFO* g_infos = 0;
+UINT64 ALvmxMNTgetLastMTFaddress()
+{
+	return g_infos[ALhvGetCurrVcoreIndex()].mtf_add;
+}
 
 static bool monitor_MTF_handler(OR_HV_VMX_CORE* vcpu, bool is2)
 {
-	ALhvPutLog("mtf:%p", vcpu->reg.rip);
-	vcpu;
 	is2;
-	return 1;
+	auto curr_ept = get_ept();
+	if (curr_ept.page_frame_number == g_target_X_ept->getEptp().page_frame_number)
+	{
+		g_infos[ALhvGetCurrVcoreIndex()].mtf_add = vcpu->reg.rip;
+		g_callback(vcpu, MONITOR_CALLBACK_TYPE_mtf);
+		return 1;
+	}
+	else
+		return 0;
 }
 
 static bool monitor_ept_violation_handler(OR_HV_VMX_CORE* vcpu, bool is2)
 {
-	vcpu;
 	is2;
-	//ALhvKill(0, 0);
-	//ALhvPutLog("1");
-	auto curr_ept = get_ept();
-	if (curr_ept.page_frame_number == EPT_CLS::getViceEpt()->getEptp().page_frame_number)
-	{
-		ALhvPutLog("2:%p", vcpu->reg.rip);
+	vmx_exit_qualification_ept_violation qualification;
+	qualification.flags = vmx_vmread(VMCS_EXIT_QUALIFICATION);
 
+	// guest physical address that caused the ept-violation
+	auto const physical_address = vmx_vmread(VMCS_GUEST_PHYSICAL_ADDRESS);
+	auto const virtual_address = vmx_vmread(VMCS_EXIT_GUEST_LINEAR_ADDRESS);
+	if (!qualification.execute_access)	  //只接管执行访问异常
+		return 0;
+		//ALhvPutLog("1");
+	
+		//ALhvPutLog("%p %p %p", virtual_address,physical_address, target_pte.flags);
+
+
+
+	auto curr_ept = get_ept();
+	if (curr_ept.page_frame_number == EPT_CLS::getViceEpt()->getEptp().page_frame_number)  //副表
+	{
+		auto target_pte = g_target_X_ept->get_pte(physical_address);
+		if (!target_pte.execute_access)//如果在目标执行页表没有访问权限则不是本模块该处理的
+			return 0;
+		g_callback(vcpu, MONITOR_CALLBACK_TYPE_enter);
 		set_ept(g_target_X_ept->getEptp());
-		enable_monitor_trap_flag();
+		//ALvmxInvept_asm(invept_all_context, {});
+
+		//enable_monitor_trap_flag();		//设置执行后MTF
+		//inject_mtf();//悬挂一个MTF事件,让进入后直接退出
 		return 1;
 		//ALhvKill(0, 0);
 	}
-	else if (curr_ept.page_frame_number == g_target_X_ept->getEptp().page_frame_number)
+	else if (curr_ept.page_frame_number == g_target_X_ept->getEptp().page_frame_number)	  //退出目标模块
 	{
-		ALhvPutLog("3:%p", vcpu->reg.rip);
-
-
+		g_callback(vcpu, MONITOR_CALLBACK_TYPE_exit);
 		set_ept(EPT_CLS::getViceEpt()->getEptp());
-		disable_monitor_trap_flag();
+		//disable_monitor_trap_flag();
 		return 1;
 	}
+	//ALhvPutLog("1");
 
 	return 0;
 }
@@ -122,9 +156,18 @@ static void  monitor_invept_all()
 
 
 //需要两个EPT,一个仅有目标页表
-bool ALvmxMNTinit()
+bool ALvmxMNTinit(MONITOR_CALLBACK callback)
 {
+	
+	g_infos = (GT(g_infos))ALhvMMallocateMemory(ALhvGetCoreCount() * sizeof(GT(*g_infos)));
+
 	static EPT_CLS target_X_ept(1, 1, 0);  //新建一个让目标执行的页表  允许读写
+	g_callback = callback;
+	if (g_callback == 0)
+	{
+		ALhvSetErr("参数错误");
+		return 0;
+	}
 	g_target_X_ept = &target_X_ept;
 	if (g_target_X_ept->getPml4e().vv == 0)
 	{
@@ -152,16 +195,16 @@ bool ALvmxMNTsetTarget(PVOID va, UINT64 size)
 	__invlpg(va);
 
 	return 1;*/
-	auto v = EPT_CLS::getViceEpt()->getEptp().flags;
-	ALhvPutLog("!!!%p", v);
+	/*auto v = EPT_CLS::getViceEpt()->getEptp().flags;
+	ALhvPutLog("!!!%p", v);*/
 	auto start_a = (UINT64)va & ~0xfffLL;
 	auto end = (((UINT64)va + size) + 0xfff) & ~0xfffLL;
 
 	for (PUINT8 i = (PUINT8)start_a; i < (PUINT8)end; i += 0x1000)
 	{
 		auto pa = ALhvMMgetPA(i);
-		ALhvPutLog("%p", pa);
 
+		/*ALhvPutLog("%p", pa);
 
 		ALhvPutLog("改之前目标执行页1 %p", g_target_X_ept->get_pml4e(pa));
 		ALhvPutLog("改之前目标执行页2 %p", g_target_X_ept->get_pdpte(pa));
@@ -176,7 +219,7 @@ bool ALvmxMNTsetTarget(PVOID va, UINT64 size)
 		ALhvPutLog("改之前系统执行页1 %p", EPT_CLS::getViceEpt()->get_pml4e(pa));
 		ALhvPutLog("改之前系统执行页2 %p", EPT_CLS::getViceEpt()->get_pdpte(pa));
 		ALhvPutLog("改之前系统执行页3 %p", EPT_CLS::getViceEpt()->get_pde(pa));
-		ALhvPutLog("改之前系统执行页4 %p", EPT_CLS::getViceEpt()->get_pte(pa));
+		ALhvPutLog("改之前系统执行页4 %p", EPT_CLS::getViceEpt()->get_pte(pa));*/
 
 		g_target_X_ept->set_pte(pa, 1, 1, 1);	   //仅让目标模块执行
 
@@ -184,7 +227,7 @@ bool ALvmxMNTsetTarget(PVOID va, UINT64 size)
 
 		//pa += 0x1000;
 
-		ALhvPutLog("改之后目标执行页1 %p", g_target_X_ept->get_pml4e(pa));
+		/*ALhvPutLog("改之后目标执行页1 %p", g_target_X_ept->get_pml4e(pa));
 		ALhvPutLog("改之后目标执行页2 %p", g_target_X_ept->get_pdpte(pa));
 		ALhvPutLog("改之后目标执行页3 %p", g_target_X_ept->get_pde(pa));
 		ALhvPutLog("改之后目标执行页4 %p", g_target_X_ept->get_pte(pa));
@@ -197,7 +240,7 @@ bool ALvmxMNTsetTarget(PVOID va, UINT64 size)
 		ALhvPutLog("改之后系统执行页1 %p", EPT_CLS::getViceEpt()->get_pml4e(pa));
 		ALhvPutLog("改之后系统执行页2 %p", EPT_CLS::getViceEpt()->get_pdpte(pa));
 		ALhvPutLog("改之后系统执行页3 %p", EPT_CLS::getViceEpt()->get_pde(pa));
-		ALhvPutLog("改之后系统执行页4 %p", EPT_CLS::getViceEpt()->get_pte(pa));
+		ALhvPutLog("改之后系统执行页4 %p", EPT_CLS::getViceEpt()->get_pte(pa));*/
 
 		__invlpg(va);
 	}

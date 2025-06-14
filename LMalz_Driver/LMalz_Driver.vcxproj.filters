@@ -42,9 +42,6 @@
     <ClCompile Include="src\orhv\orhv.cpp">
       <Filter>Source Files\orhv</Filter>
     </ClCompile>
-    <ClCompile Include="src\orhv\errput.cpp">
-      <Filter>Source Files\orhv</Filter>
-    </ClCompile>
     <ClCompile Include="src\memory.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -75,8 +72,26 @@
     <ClCompile Include="src\orhv\vmx\mods\R_X_isolate.cpp">
       <Filter>Source Files\orhv\vmx\mods</Filter>
     </ClCompile>
-    <ClCompile Include="src\orhv\vmx\mods\monitor.cpp">
+    <ClCompile Include="src\orhv\vmx\mods\vmx_monitor.cpp">
       <Filter>Source Files\orhv\vmx\mods</Filter>
+    </ClCompile>
+    <ClCompile Include="src\monitor_handlers.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Buffer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\disassemble.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\send.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\orhv\hverrput.cpp">
+      <Filter>Source Files\orhv</Filter>
+    </ClCompile>
+    <ClCompile Include="src\errput.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -125,6 +140,24 @@
     <ClInclude Include="src\dbgput.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\orhv\vmx\mods\vmx_monitor.h">
+      <Filter>Source Files\orhv\vmx\mods</Filter>
+    </ClInclude>
+    <ClInclude Include="src\monitor_handlers.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Buffer.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\disassemble.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\send.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\send_type.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <MASM Include="src\orhv\idt_.asm">
@@ -144,5 +177,9 @@
     <None Include="src\orhv\vmx\vmx.inc">
       <Filter>Source Files\orhv\vmx</Filter>
     </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Library Include="..\extern\Zydis\Zycore.lib" />
+    <Library Include="..\extern\Zydis\Zydis.lib" />
   </ItemGroup>
 </Project>

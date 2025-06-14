@@ -6,9 +6,6 @@ MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LMalz_Driver", "LMalz_Driver\LMalz_Driver.vcxproj", "{0596B611-1D7A-4814-897A-C43B91ED47C8}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "test", "test\test.vcxproj", "{896D0B78-3E49-4CED-AEA9-7112D7BF6C64}"
-	ProjectSection(ProjectDependencies) = postProject
-		{0596B611-1D7A-4814-897A-C43B91ED47C8} = {0596B611-1D7A-4814-897A-C43B91ED47C8}
-	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{0BB45C2A-BDA1-4181-852B-96C14E41B170}"
 	ProjectSection(SolutionItems) = preProject

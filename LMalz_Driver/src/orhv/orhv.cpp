@@ -255,5 +255,12 @@ uint64_t ALhvGetSegmentBase(
 
 	return base_address;
 }
+cr3 ALhvGetGuestCr3()
+{
+	if (ALhvIsIntelCPU())
+		return ALvmxGetGuestCr3();
+	else		//amdŒ¥ µœ÷
+		return {};
+}
 
 
