@@ -1,6 +1,6 @@
 #include "Buffer.h"
-#define __R3
-#include "F:\g_un\ALJT\Code\omri\include\debug\debug.h"
+//#define __R3
+//#include "F:\g_un\ALJT\Code\omri\include\debug\debug.h"
 
 void OR_SHA_IO::ReadData(BUFFER_HANDLER handler)
 {
